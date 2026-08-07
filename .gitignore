@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Packaging / build
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Ambienti virtuali
+.venv/
+venv/
+env/
+
+# Test e coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# Segreti e configurazione locale
+.env
+*.local
+
+# Editor e OS
+.idea/
+.vscode/
+.DS_Store
+
+# Tracce di volo di prova
+*.igc

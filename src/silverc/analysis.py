@@ -1,0 +1,312 @@
+"""Estrazione dei punti notevoli del volo dalla traccia IGC."""
+
+from __future__ import annotations
+
+import logging
+import math
+import time
+from dataclasses import dataclass
+from datetime import datetime
+
+from silverc.igc import Fix, Flight
+from silverc.rules import PARAMS
+
+logger = logging.getLogger(__name__)
+
+try:
+    from geographiclib.geodesic import Geodesic
+
+    _GEODESIC_MODEL = "WGS84 (geographiclib)"
+except ImportError:  # pragma: no cover - dipende dall'ambiente
+    Geodesic = None
+    _GEODESIC_MODEL = "sfera FAI r=6371000 m (geographiclib assente)"
+
+_FAI_SPHERE_RADIUS_M = 6_371_000.0
+
+RELEASE_SOURCE_MANUAL = "dichiarato dall'utente"
+RELEASE_SOURCE_HEURISTIC = "euristica sulla traccia"
+
+
+@dataclass(frozen=True)
+class Point:
+    """Un fix con il suo indice nella traccia."""
+
+    index: int
+    fix: Fix
+
+    @property
+    def time(self) -> datetime:
+        return self.fix.time
+
+
+@dataclass
+class HeightGain:
+    low: Point | None
+    high: Point | None
+    gain_m: float
+
+
+@dataclass
+class FlightAnalysis:
+    takeoff: Point
+    landing: Point
+    release: Point
+    release_source: str
+    release_confidence: str
+    tow_climb_m: float
+    height_gain: HeightGain
+    farthest: Point
+    distance_m: float
+    distance_from_takeoff_m: float
+    geodesic_model: str
+    loss_of_height_m: float
+    altitude_source: str
+    engine_suspected: bool
+    max_enl: int | None
+    notes: list[str]
+
+    @property
+    def duration_s(self) -> float:
+        return (self.landing.time - self.release.time).total_seconds()
+
+
+def geodesic_distance_m(a: Fix, b: Fix) -> tuple[float, str]:
+    """Distanza fra due fix; restituisce anche il modello geodetico usato."""
+    if Geodesic is not None:
+        result = Geodesic.WGS84.Inverse(a.lat, a.lon, b.lat, b.lon)
+        return float(result["s12"]), _GEODESIC_MODEL
+    phi1, phi2 = math.radians(a.lat), math.radians(b.lat)
+    dphi = phi2 - phi1
+    dlambda = math.radians(b.lon - a.lon)
+    h = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+    return 2 * _FAI_SPHERE_RADIUS_M * math.asin(math.sqrt(h)), _GEODESIC_MODEL
+
+
+def _fast_distance_m(a: Fix, b: Fix) -> float:
+    """Approssimazione equirettangolare, per i confronti interni alla traccia.
+
+    Errore trascurabile sotto il chilometro ed evita centinaia di migliaia di
+    chiamate al calcolo geodetico completo su una traccia a 1 Hz.
+    """
+    mean_lat = math.radians((a.lat + b.lat) / 2.0)
+    dx = math.radians(b.lon - a.lon) * math.cos(mean_lat)
+    dy = math.radians(b.lat - a.lat)
+    return math.hypot(dx, dy) * _FAI_SPHERE_RADIUS_M
+
+
+def _sampling_stride(fixes: list[Fix], window_s: int) -> int:
+    span = (fixes[-1].time - fixes[0].time).total_seconds()
+    if span <= 0 or len(fixes) < 2:
+        return 1
+    interval = span / (len(fixes) - 1)
+    per_window = window_s / max(interval, 1e-6)
+    return max(1, int(per_window // 12))
+
+
+def _moving_flags(fixes: list[Fix]) -> list[bool]:
+    """Per ogni fix: l'aliante si allontana dalla posizione entro la finestra?"""
+    stride = _sampling_stride(fixes, PARAMS.stationary_window_s)
+    flags = [False] * len(fixes)
+    for i, fix in enumerate(fixes):
+        limit = fix.time.timestamp() + PARAMS.stationary_window_s
+        j = i + 1
+        while j < len(fixes) and fixes[j].time.timestamp() <= limit:
+            if _fast_distance_m(fix, fixes[j]) >= PARAMS.stationary_radius_m:
+                flags[i] = True
+                break
+            j += stride
+    return flags
+
+
+def _altitude(fix: Fix, use_gnss: bool) -> int | None:
+    return fix.gnss_alt if use_gnss else fix.pressure_alt
+
+
+def detect_takeoff(fixes: list[Fix], moving: list[bool] | None = None) -> Point:
+    """Primo fix a partire dal quale l'aliante lascia la posizione di sosta."""
+    flags = moving if moving is not None else _moving_flags(fixes)
+    for i, flag in enumerate(flags):
+        if flag:
+            return Point(i, fixes[i])
+    return Point(0, fixes[0])
+
+
+def detect_landing(fixes: list[Fix], moving: list[bool] | None = None) -> Point:
+    """Primo fix della sosta finale: i successivi sono registrazione a terra."""
+    flags = moving if moving is not None else _moving_flags(fixes)
+    last = len(fixes) - 1
+    for i in range(last, -1, -1):
+        if flags[i]:
+            return Point(min(i + 1, last), fixes[min(i + 1, last)])
+    return Point(last, fixes[last])
+
+
+def detect_release(fixes: list[Fix], takeoff: Point, use_gnss: bool) -> tuple[Point, str, float]:
+    """Euristica di sgancio: fine della salita continua iniziale.
+
+    Cerca il primo massimo di quota dopo il decollo seguito, entro una breve
+    finestra, da una discesa significativa. Funziona sul traino aereo e sul
+    verricello; non distingue un decollo autonomo a motore.
+    """
+    peak_alt: int | None = None
+    peak_point: Point | None = None
+    takeoff_alt = _altitude(takeoff.fix, use_gnss)
+    for i in range(takeoff.index, len(fixes)):
+        alt = _altitude(fixes[i], use_gnss)
+        if alt is None:
+            continue
+        if peak_alt is None or alt > peak_alt:
+            peak_alt, peak_point = alt, Point(i, fixes[i])
+            continue
+        if peak_point is None or peak_alt - alt < PARAMS.release_drop_m:
+            continue
+        climb = peak_alt - (takeoff_alt if takeoff_alt is not None else peak_alt)
+        confidence = "alta" if climb >= PARAMS.min_tow_climb_m else "bassa"
+        logger.debug(
+            "Sgancio euristico: t=%s, quota=%dm, salita al traino=%dm, confidenza=%s",
+            peak_point.time.strftime("%H:%M:%S"),
+            peak_alt,
+            climb,
+            confidence,
+        )
+        return peak_point, confidence, float(climb)
+    return takeoff, "nulla", 0.0
+
+
+def find_farthest_point(fixes: list[Fix], origin: Fix, start_index: int, end_index: int) -> Point:
+    """Punto della traccia piu' lontano dall'origine, fra due indici inclusi.
+
+    Il candidato si sceglie con la distanza approssimata (una passata su tutti
+    i fix); la distanza definitiva sul candidato si calcola poi in geodetica.
+    """
+    best_index = start_index
+    best_distance = -1.0
+    for i in range(start_index, min(end_index + 1, len(fixes))):
+        distance = _fast_distance_m(origin, fixes[i])
+        if distance > best_distance:
+            best_distance, best_index = distance, i
+    return Point(best_index, fixes[best_index])
+
+
+def find_point_at(fixes: list[Fix], moment: datetime) -> Point:
+    """Fix piu' vicino a un istante dato."""
+    best = min(range(len(fixes)), key=lambda i: abs((fixes[i].time - moment).total_seconds()))
+    return Point(best, fixes[best])
+
+
+def compute_height_gain(
+    fixes: list[Fix], start_index: int, use_gnss: bool, end_index: int | None = None
+) -> HeightGain:
+    """Massimo guadagno di quota con punto basso precedente al punto alto."""
+    low: Point | None = None
+    running_low: Point | None = None
+    high: Point | None = None
+    best = 0.0
+    stop = len(fixes) if end_index is None else min(end_index + 1, len(fixes))
+    for i in range(start_index, stop):
+        alt = _altitude(fixes[i], use_gnss)
+        if alt is None:
+            continue
+        current = Point(i, fixes[i])
+        running_alt = _altitude(running_low.fix, use_gnss) if running_low else None
+        if running_alt is None or alt < running_alt:
+            running_low = current
+            running_alt = alt
+        gain = alt - running_alt
+        if gain > best:
+            best, low, high = float(gain), running_low, current
+    return HeightGain(low=low, high=high, gain_m=best)
+
+
+def analyse(
+    flight: Flight,
+    release_time: datetime | None = None,
+    use_gnss_altitude: bool = False,
+) -> FlightAnalysis:
+    """Calcola tutte le grandezze necessarie alla validazione."""
+    started = time.perf_counter()
+    fixes = flight.fixes
+    notes: list[str] = []
+
+    baro = [f.pressure_alt for f in fixes if f.pressure_alt is not None]
+    if not use_gnss_altitude and (
+        not baro or max(baro) - min(baro) < PARAMS.min_barometric_spread_m
+    ):
+        use_gnss_altitude = True
+        notes.append(
+            "Quota barometrica assente o costante (campo non compilato dal "
+            "logger): usata la quota GNSS con la penalizzazione prevista."
+        )
+    altitude_source = "GNSS" if use_gnss_altitude else "barometrica (ISA 1013.25 hPa)"
+
+    moving = _moving_flags(fixes)
+    takeoff = detect_takeoff(fixes, moving)
+    landing = detect_landing(fixes, moving)
+
+    if release_time is not None:
+        release = find_point_at(fixes, release_time)
+        release_source, confidence, tow_climb = RELEASE_SOURCE_MANUAL, "alta", 0.0
+        delta = abs((release.time - release_time).total_seconds())
+        if delta > PARAMS.max_release_time_mismatch_s:
+            confidence = "bassa"
+            notes.append(
+                f"L'orario di sgancio indicato dista {delta:.0f}s dal fix piu' "
+                "vicino: verificare che si riferisca a questo volo."
+            )
+        if release.index < takeoff.index:
+            confidence = "bassa"
+            notes.append(
+                "L'orario di sgancio indicato precede il decollo rilevato "
+                f"({takeoff.time:%H:%M:%S} UTC)."
+            )
+    else:
+        release, confidence, tow_climb = detect_release(fixes, takeoff, use_gnss_altitude)
+        release_source = RELEASE_SOURCE_HEURISTIC
+
+    gain = compute_height_gain(fixes, release.index, use_gnss_altitude, landing.index)
+
+    farthest = find_farthest_point(fixes, release.fix, release.index, landing.index)
+    distance, model = geodesic_distance_m(release.fix, farthest.fix)
+    distance_from_takeoff, _ = geodesic_distance_m(takeoff.fix, farthest.fix)
+
+    release_alt = _altitude(release.fix, use_gnss_altitude)
+    far_alt = _altitude(farthest.fix, use_gnss_altitude)
+    loss = float(release_alt - far_alt) if release_alt is not None and far_alt is not None else 0.0
+
+    enl_values = [f.enl for f in fixes[release.index : landing.index + 1] if f.enl is not None]
+    max_enl = max(enl_values) if enl_values else None
+    engine_suspected = bool(
+        max_enl is not None and max_enl >= PARAMS.enl_running_threshold
+    )
+
+    analysis = FlightAnalysis(
+        takeoff=takeoff,
+        landing=landing,
+        release=release,
+        release_source=release_source,
+        release_confidence=confidence,
+        tow_climb_m=tow_climb,
+        height_gain=gain,
+        farthest=farthest,
+        distance_m=distance,
+        distance_from_takeoff_m=distance_from_takeoff,
+        geodesic_model=model,
+        loss_of_height_m=loss,
+        altitude_source=altitude_source,
+        engine_suspected=engine_suspected,
+        max_enl=max_enl,
+        notes=notes,
+    )
+    logger.debug(
+        "Analisi volo: fixes=%d, sgancio=%s (%s), atterraggio=%s | durata=%.0fs, "
+        "guadagno=%.0fm, distanza=%.0fm | %.1fms",
+        len(fixes),
+        release.time.strftime("%H:%M:%S"),
+        release_source,
+        landing.time.strftime("%H:%M:%S"),
+        analysis.duration_s,
+        gain.gain_m,
+        distance,
+        (time.perf_counter() - started) * 1000,
+    )
+    return analysis
