@@ -1,6 +1,7 @@
-# Insegna d'argento (Silver C) — condizioni minime
+# Insegne d'argento e d'oro — condizioni minime
 
-Le tre prove sono indipendenti e possono essere ottenute in **voli diversi**.
+Per entrambe le insegne le tre prove sono indipendenti e possono essere
+ottenute in **voli diversi**.
 Ogni volo va documentato con una traccia IGC di un logger approvato, firmata
 (G-record) e convalidata da un Osservatore Ufficiale.
 
@@ -19,14 +20,16 @@ registra**, viene dedotto con questa euristica:
 Non è una regola FAI ma una stima: il report la dichiara sempre con la sua
 confidenza.
 
-## 1. Durata — 5 ore
+## Insegna d'argento (Silver C)
+
+### 1. Durata — 5 ore
 
 - Volo di almeno **5 h 00 m** continuative.
 - Il conteggio parte dallo **sgancio** (o dall'ultimo istante di volo propulso)
   e finisce all'**atterraggio**.
 - Nessuna tolleranza: 4 h 59 m non è valido.
 
-## 2. Distanza — 50 km
+### 2. Distanza — 50 km
 
 - Almeno **50 km** in linea retta dal punto di sgancio al punto più lontano
   raggiunto in volo.
@@ -35,7 +38,7 @@ confidenza.
 - **Perdita di quota** fra punto di partenza e punto d'arrivo non superiore
   all'**1% della distanza** (500 m su 50 km). Superarla invalida la prova.
 
-## 3. Guadagno di quota — 1000 m
+### 3. Guadagno di quota — 1000 m
 
 - Almeno **1000 m** fra un **punto basso** e un **punto alto successivo**,
   entrambi dopo lo sgancio.
@@ -44,6 +47,33 @@ confidenza.
 - Si usa la **quota barometrica**. Con la sola quota GNSS (ammessa per Silver e
   Gold) tutti i requisiti di quota vanno maggiorati di **100 m** di margine
   d'errore.
+
+## Insegna d'oro (Gold C)
+
+Presuppone l'insegna d'argento già conseguita.
+
+### 1. Durata — 5 ore
+
+- Identica alla prova d'argento: lo stesso volo di 5 h vale per entrambe le
+  insegne, non va ripetuto.
+
+### 2. Distanza — 300 km
+
+- Almeno **300 km** su un percorso **dichiarato prima del volo**, con un
+  massimo di 3 punti di virata (linea retta, andata e ritorno o triangolo).
+- Ogni punto di virata dichiarato va documentato dalla traccia.
+- **Perdita di quota** non superiore all'**1% della distanza** (3000 m su
+  300 km).
+
+### 3. Guadagno di quota — 3000 m
+
+- Almeno **3000 m** fra un punto basso e un punto alto successivo, con lo
+  stesso criterio della prova d'argento.
+- Ammessa la quota GNSS con la maggiorazione di 100 m.
+
+> Il validatore in questo repository implementa **solo le prove d'argento**:
+> la distanza d'oro richiede di leggere il percorso dichiarato (record C
+> dell'IGC) e di verificare i punti di virata.
 
 ---
 
