@@ -10,7 +10,8 @@ from datetime import datetime, timezone
 from silverc.analysis import analyse
 from silverc.igc import IGCParseError, parse_igc
 from silverc.report import render
-from silverc.validator import validate_silver
+from silverc.rules import BADGES
+from silverc.validator import validate_badge
 
 logger = logging.getLogger(__name__)
 
@@ -32,9 +33,15 @@ def _parse_release_time(value: str) -> datetime:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="silverc",
-        description="Valida un file IGC rispetto ai requisiti dell'insegna d'argento FAI.",
+        description="Valida un file IGC rispetto ai requisiti delle insegne FAI.",
     )
     parser.add_argument("igc_file", help="percorso del file IGC da analizzare")
+    parser.add_argument(
+        "--badge",
+        choices=sorted(BADGES),
+        default="argento",
+        help="insegna da verificare (default: argento)",
+    )
     parser.add_argument(
         "--release-time",
         type=_parse_release_time,
@@ -76,7 +83,7 @@ def main(argv: list[str] | None = None) -> int:
         release_time = release_time.replace(year=first.year, month=first.month, day=first.day)
 
     analysis = analyse(flight, release_time=release_time, use_gnss_altitude=args.gnss_altitude)
-    report = validate_silver(flight, analysis)
+    report = validate_badge(flight, analysis, BADGES[args.badge])
     sys.stdout.write(render(report) + "\n")
     return EXIT_OK if report.complete else EXIT_NOT_VALID
 

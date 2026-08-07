@@ -30,11 +30,36 @@ class Fix:
     enl: int | None = None
 
 
+@dataclass(frozen=True)
+class Waypoint:
+    lat: float
+    lon: float
+    name: str
+
+
+@dataclass
+class DeclaredTask:
+    """Percorso dichiarato prima del volo (record C)."""
+
+    declared_at: datetime | None
+    start: Waypoint
+    turnpoints: list[Waypoint]
+    finish: Waypoint
+    takeoff: Waypoint | None = None
+    landing: Waypoint | None = None
+
+    @property
+    def points(self) -> list[Waypoint]:
+        """Punti che concorrono alla distanza: partenza, virate, arrivo."""
+        return [self.start, *self.turnpoints, self.finish]
+
+
 @dataclass
 class Flight:
     fixes: list[Fix]
     flight_date: date | None
     headers: dict[str, str] = field(default_factory=dict)
+    task: DeclaredTask | None = None
     rejected: list[tuple[int, str]] = field(default_factory=list)
     has_g_record: bool = False
     has_enl: bool = False
@@ -91,6 +116,63 @@ def _parse_i_record(line: str) -> dict[str, tuple[int, int]]:
     return ext
 
 
+def _parse_c_records(lines: list[str], flight_date: date | None) -> DeclaredTask | None:
+    """Ricostruisce il percorso dichiarato dalla sequenza di record C.
+
+    Il primo record C e' l'intestazione (data/ora di dichiarazione e numero di
+    punti di virata); seguono decollo, partenza, le virate, arrivo, atterraggio.
+    """
+    if not lines:
+        return None
+    header = lines[0]
+    declared_at: datetime | None = None
+    try:
+        dd, mm, yy = int(header[1:3]), int(header[3:5]), int(header[5:7])
+        hh, mi, ss = int(header[7:9]), int(header[9:11]), int(header[11:13])
+        declared_at = datetime(
+            2000 + yy if yy < 80 else 1900 + yy, mm, dd, hh, mi, ss, tzinfo=timezone.utc
+        )
+    except ValueError:
+        logger.debug("Record C: intestazione senza data/ora di dichiarazione valida")
+
+    try:
+        num_turnpoints = int(header[23:25])
+    except ValueError:
+        logger.debug("Record C: numero di punti di virata illeggibile")
+        return None
+
+    waypoints: list[Waypoint] = []
+    for line in lines[1:]:
+        if len(line) < 18:
+            continue
+        try:
+            waypoints.append(
+                Waypoint(
+                    lat=_parse_latitude(line[1:9]),
+                    lon=_parse_longitude(line[9:18]),
+                    name=line[18:].strip() or "senza nome",
+                )
+            )
+        except (ValueError, IndexError):
+            logger.debug("Record C: punto malformato ignorato")
+
+    # decollo + partenza + virate + arrivo + atterraggio
+    if len(waypoints) < num_turnpoints + 4:
+        logger.debug(
+            "Record C: attesi %d punti, trovati %d", num_turnpoints + 4, len(waypoints)
+        )
+        return None
+
+    return DeclaredTask(
+        declared_at=declared_at,
+        takeoff=waypoints[0],
+        start=waypoints[1],
+        turnpoints=waypoints[2 : 2 + num_turnpoints],
+        finish=waypoints[2 + num_turnpoints],
+        landing=waypoints[3 + num_turnpoints],
+    )
+
+
 def _parse_latitude(raw: str) -> float:
     deg = int(raw[0:2])
     minutes = int(raw[2:7]) / 1000.0
@@ -128,6 +210,7 @@ def parse_igc(path: str | Path) -> Flight:
     extensions: dict[str, tuple[int, int]] = {}
     flight_date: date | None = None
     has_g_record = False
+    c_records: list[str] = []
     fixes: list[Fix] = []
     rejected: list[tuple[int, str]] = []
     day_offset = 0
@@ -144,6 +227,8 @@ def parse_igc(path: str | Path) -> Flight:
             headers[code] = line.split(":", 1)[1] if ":" in line else line[5:]
         elif rec == "I":
             extensions = _parse_i_record(line)
+        elif rec == "C":
+            c_records.append(line)
         elif rec == "G":
             has_g_record = True
         elif rec == "B":
@@ -170,6 +255,7 @@ def parse_igc(path: str | Path) -> Flight:
         raise IGCParseError(f"Nessun B-record valido trovato in {path}")
 
     kept = _filter_altitude_spikes(fixes, rejected)
+    task = _parse_c_records(c_records, flight_date)
     elapsed_ms = (time.perf_counter() - started) * 1000
     logger.debug(
         "Parsed IGC: file=%s | fixes=%d, scartati=%d, data=%s, ENL=%s, G-record=%s | %.1fms",
@@ -185,6 +271,7 @@ def parse_igc(path: str | Path) -> Flight:
         fixes=kept,
         flight_date=flight_date,
         headers=headers,
+        task=task,
         rejected=rejected,
         has_g_record=has_g_record,
         has_enl="ENL" in extensions,

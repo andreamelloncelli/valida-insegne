@@ -71,10 +71,6 @@ Presuppone l'insegna d'argento già conseguita.
   stesso criterio della prova d'argento.
 - Ammessa la quota GNSS con la maggiorazione di 100 m.
 
-> Il validatore in questo repository implementa **solo le prove d'argento**:
-> la distanza d'oro richiede di leggere il percorso dichiarato (record C
-> dell'IGC) e di verificare i punti di virata.
-
 ---
 
 > Le soglie qui riportate provengono da fonti secondarie e vanno verificate

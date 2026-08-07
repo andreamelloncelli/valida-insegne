@@ -13,17 +13,26 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class SilverRules:
-    """Soglie per l'insegna d'argento (Silver C)."""
+class BadgeRules:
+    """Soglie di un'insegna."""
 
-    # SC3 §1.4.2 (Silver distance) - TO VERIFY
+    name: str = "argento"
+
+    # SC3 §1.4.2 (distanza) - TO VERIFY
     min_distance_m: float = 50_000.0
 
-    # SC3 §1.4.1 (Silver duration) - TO VERIFY
+    # SC3 §1.4.1 (durata) - TO VERIFY
     min_duration_s: int = 5 * 3600
 
-    # SC3 §1.4.3 (Silver height gain) - TO VERIFY
+    # SC3 §1.4.3 (guadagno di quota) - TO VERIFY
     min_height_gain_m: float = 1_000.0
+
+    # La distanza d'oro va volata su un percorso dichiarato prima del volo,
+    # quella d'argento no. - TO VERIFY
+    requires_declared_task: bool = False
+
+    # Numero massimo di punti di virata ammessi nella dichiarazione. - TO VERIFY
+    max_turnpoints: int = 3
 
     # SC3 - perdita di quota massima ammessa fra punto di partenza e di
     # arrivo: 1% della distanza percorsa. - TO VERIFY (verificare se
@@ -71,6 +80,22 @@ class AnalysisParams:
     # piu' vicino, oltre la quale il dato non e' considerato affidabile.
     max_release_time_mismatch_s: float = 120.0
 
+    # Zone di osservazione del percorso dichiarato: cilindro attorno al punto
+    # di virata e alle linee di partenza/arrivo. Il Sporting Code ammette anche
+    # il settore FAI di 90 gradi e raggio 3 km per i punti di virata. - TO VERIFY
+    turnpoint_zone_radius_m: float = 500.0
+    start_finish_zone_radius_m: float = 1_000.0
 
-RULES = SilverRules()
+
+SILVER = BadgeRules(name="argento")
+GOLD = BadgeRules(
+    name="oro",
+    min_distance_m=300_000.0,
+    min_duration_s=5 * 3600,
+    min_height_gain_m=3_000.0,
+    requires_declared_task=True,
+)
+BADGES = {SILVER.name: SILVER, GOLD.name: GOLD}
+
+RULES = SILVER
 PARAMS = AnalysisParams()

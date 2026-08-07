@@ -30,6 +30,20 @@ class IGCBuilder:
     with_enl: bool = False
     with_g_record: bool = True
     lines: list[str] = field(default_factory=list)
+    task: list[str] = field(default_factory=list)
+
+    def declare(
+        self,
+        points: list[tuple[float, float, str]],
+        declared_hhmmss: str = "090000",
+    ) -> "IGCBuilder":
+        """Dichiara un percorso: decollo, partenza, virate..., arrivo, atterraggio."""
+        turnpoints = max(0, len(points) - 4)
+        self.task = [
+            f"C{self.date_ddmmyy}{declared_hhmmss}{self.date_ddmmyy}0001{turnpoints:02d}TASK"
+        ]
+        self.task += [f"C{_lat_field(lat)}{_lon_field(lon)}{name}" for lat, lon, name in points]
+        return self
 
     def fix(
         self,
@@ -65,7 +79,7 @@ class IGCBuilder:
         if self.with_enl:
             head.append("I013638ENL")
         tail = ["GDEADBEEF"] if self.with_g_record else []
-        return "\n".join(head + self.lines + tail) + "\n"
+        return "\n".join(head + self.task + self.lines + tail) + "\n"
 
     def write(self, path) -> str:
         path = str(path)

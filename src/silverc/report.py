@@ -46,7 +46,7 @@ def render(report: ValidationReport) -> str:
     analysis = report.analysis
     lines: list[str] = [
         _rule("="),
-        "VALIDAZIONE INSEGNA D'ARGENTO FAI (Silver C)",
+        f"VALIDAZIONE INSEGNA D'{report.badge.upper()} FAI",
         _rule("="),
         f"File      : {flight.source}",
         f"Data volo : {flight.flight_date or 'n/d'}",
@@ -65,10 +65,24 @@ def render(report: ValidationReport) -> str:
         f"{analysis.distance_from_takeoff_m / 1000:.2f} km dal decollo",
         f"Atterraggio  : {analysis.landing.time:%H:%M:%S}  {_coords(analysis.landing)}",
         f"Quota usata  : {analysis.altitude_source}",
-        "",
-        "REQUISITI",
-        _rule(),
     ]
+
+    if analysis.task_check is not None:
+        check = analysis.task_check
+        lines += ["", "PERCORSO DICHIARATO (record C)", _rule()]
+        if check.task.declared_at is not None:
+            lines.append(f"Dichiarato il: {check.task.declared_at:%Y-%m-%d %H:%M:%S} UTC")
+        lines.append(f"Distanza     : {check.distance_m / 1000:.2f} km")
+        for waypoint in check.waypoints:
+            esito = "raggiunto" if waypoint.reached else "NON raggiunto"
+            orario = f"{waypoint.point.time:%H:%M:%S}" if waypoint.point else "--:--:--"
+            lines.append(
+                f"  {waypoint.label:<10} {waypoint.waypoint.lat:9.5f} "
+                f"{waypoint.waypoint.lon:10.5f}  {waypoint.waypoint.name[:18]:<18} "
+                f"{esito} ({orario}, min {waypoint.closest_m:.0f} m)"
+            )
+
+    lines += ["", "REQUISITI", _rule()]
 
     for req in report.requirements:
         lines += _requirement_block(req)
@@ -79,7 +93,7 @@ def render(report: ValidationReport) -> str:
     if report.complete:
         lines.append(
             "VALIDO: questo singolo volo soddisfa tutti e tre i requisiti "
-            "dell'insegna d'argento."
+            f"dell'insegna d'{report.badge}."
         )
     elif satisfied:
         nomi = ", ".join(r.code for r in satisfied)

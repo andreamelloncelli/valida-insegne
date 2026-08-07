@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 
-from silverc.igc import Fix, Flight
+from silverc.igc import DeclaredTask, Fix, Flight, Waypoint
 from silverc.rules import PARAMS
 
 logger = logging.getLogger(__name__)
@@ -64,34 +64,42 @@ class FlightAnalysis:
     engine_suspected: bool
     max_enl: int | None
     notes: list[str]
+    task_check: "TaskCheck | None" = None
 
     @property
     def duration_s(self) -> float:
         return (self.landing.time - self.release.time).total_seconds()
 
 
+def geodesic_distance_ll(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    if Geodesic is not None:
+        return float(Geodesic.WGS84.Inverse(lat1, lon1, lat2, lon2)["s12"])
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = phi2 - phi1
+    dlambda = math.radians(lon2 - lon1)
+    h = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+    return 2 * _FAI_SPHERE_RADIUS_M * math.asin(math.sqrt(h))
+
+
 def geodesic_distance_m(a: Fix, b: Fix) -> tuple[float, str]:
     """Distanza fra due fix; restituisce anche il modello geodetico usato."""
-    if Geodesic is not None:
-        result = Geodesic.WGS84.Inverse(a.lat, a.lon, b.lat, b.lon)
-        return float(result["s12"]), _GEODESIC_MODEL
-    phi1, phi2 = math.radians(a.lat), math.radians(b.lat)
-    dphi = phi2 - phi1
-    dlambda = math.radians(b.lon - a.lon)
-    h = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
-    return 2 * _FAI_SPHERE_RADIUS_M * math.asin(math.sqrt(h)), _GEODESIC_MODEL
+    return geodesic_distance_ll(a.lat, a.lon, b.lat, b.lon), _GEODESIC_MODEL
 
 
-def _fast_distance_m(a: Fix, b: Fix) -> float:
+def _fast_distance_ll(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Approssimazione equirettangolare, per i confronti interni alla traccia.
 
     Errore trascurabile sotto il chilometro ed evita centinaia di migliaia di
     chiamate al calcolo geodetico completo su una traccia a 1 Hz.
     """
-    mean_lat = math.radians((a.lat + b.lat) / 2.0)
-    dx = math.radians(b.lon - a.lon) * math.cos(mean_lat)
-    dy = math.radians(b.lat - a.lat)
+    mean_lat = math.radians((lat1 + lat2) / 2.0)
+    dx = math.radians(lon2 - lon1) * math.cos(mean_lat)
+    dy = math.radians(lat2 - lat1)
     return math.hypot(dx, dy) * _FAI_SPHERE_RADIUS_M
+
+
+def _fast_distance_m(a: Fix, b: Fix) -> float:
+    return _fast_distance_ll(a.lat, a.lon, b.lat, b.lon)
 
 
 def _sampling_stride(fixes: list[Fix], window_s: int) -> int:
@@ -186,6 +194,123 @@ def find_farthest_point(fixes: list[Fix], origin: Fix, start_index: int, end_ind
         if distance > best_distance:
             best_distance, best_index = distance, i
     return Point(best_index, fixes[best_index])
+
+
+@dataclass
+class WaypointCheck:
+    """Esito del passaggio su un punto del percorso dichiarato."""
+
+    waypoint: Waypoint
+    label: str
+    radius_m: float
+    reached: bool
+    closest_m: float
+    point: Point | None
+
+
+@dataclass
+class TaskCheck:
+    """Esito complessivo del percorso dichiarato."""
+
+    task: DeclaredTask
+    waypoints: list[WaypointCheck]
+    distance_m: float
+    loss_of_height_m: float
+
+    @property
+    def completed(self) -> bool:
+        return all(w.reached for w in self.waypoints)
+
+    @property
+    def missed(self) -> list[WaypointCheck]:
+        return [w for w in self.waypoints if not w.reached]
+
+
+def _task_labels(task: DeclaredTask) -> list[str]:
+    return (
+        ["Partenza"]
+        + [f"Virata {i}" for i in range(1, len(task.turnpoints) + 1)]
+        + ["Arrivo"]
+    )
+
+
+def declared_task_distance_m(task: DeclaredTask) -> float:
+    """Somma delle tratte fra i punti dichiarati."""
+    points = task.points
+    return sum(
+        geodesic_distance_ll(a.lat, a.lon, b.lat, b.lon)
+        for a, b in zip(points, points[1:])
+    )
+
+
+def verify_declared_task(
+    fixes: list[Fix],
+    task: DeclaredTask,
+    start_index: int,
+    end_index: int,
+    use_gnss: bool = False,
+) -> TaskCheck:
+    """Verifica che la traccia tocchi i punti dichiarati **nell'ordine previsto**.
+
+    Ogni punto e' considerato raggiunto quando un fix cade dentro la sua zona
+    di osservazione; la ricerca del punto successivo riparte da li'.
+    """
+    labels = _task_labels(task)
+    points = task.points
+    last_index = min(end_index, len(fixes) - 1)
+    checks: list[WaypointCheck] = []
+    cursor = start_index
+
+    for order, (waypoint, label) in enumerate(zip(points, labels)):
+        is_edge = order in (0, len(points) - 1)
+        radius = (
+            PARAMS.start_finish_zone_radius_m if is_edge else PARAMS.turnpoint_zone_radius_m
+        )
+        reached_at: Point | None = None
+        closest = float("inf")
+        closest_at: Point | None = None
+        for i in range(cursor, last_index + 1):
+            distance = _fast_distance_ll(waypoint.lat, waypoint.lon, fixes[i].lat, fixes[i].lon)
+            if distance < closest:
+                closest, closest_at = distance, Point(i, fixes[i])
+            if distance <= radius:
+                reached_at = Point(i, fixes[i])
+                break
+        checks.append(
+            WaypointCheck(
+                waypoint=waypoint,
+                label=label,
+                radius_m=radius,
+                reached=reached_at is not None,
+                closest_m=closest if closest != float("inf") else 0.0,
+                point=reached_at or closest_at,
+            )
+        )
+        if reached_at is not None:
+            cursor = reached_at.index
+
+    start_check, finish_check = checks[0], checks[-1]
+    loss = 0.0
+    if start_check.reached and finish_check.reached and start_check.point and finish_check.point:
+        start_alt = _altitude(start_check.point.fix, use_gnss)
+        finish_alt = _altitude(finish_check.point.fix, use_gnss)
+        if start_alt is not None and finish_alt is not None:
+            loss = float(start_alt - finish_alt)
+
+    result = TaskCheck(
+        task=task,
+        waypoints=checks,
+        distance_m=declared_task_distance_m(task),
+        loss_of_height_m=loss,
+    )
+    logger.debug(
+        "Percorso dichiarato: %d punti, distanza=%.1fkm, completato=%s, mancati=%s",
+        len(checks),
+        result.distance_m / 1000,
+        result.completed,
+        [w.label for w in result.missed],
+    )
+    return result
 
 
 def find_point_at(fixes: list[Fix], moment: datetime) -> Point:
@@ -296,6 +421,13 @@ def analyse(
         engine_suspected=engine_suspected,
         max_enl=max_enl,
         notes=notes,
+        task_check=(
+            verify_declared_task(
+                fixes, flight.task, release.index, landing.index, use_gnss_altitude
+            )
+            if flight.task is not None
+            else None
+        ),
     )
     logger.debug(
         "Analisi volo: fixes=%d, sgancio=%s (%s), atterraggio=%s | durata=%.0fs, "

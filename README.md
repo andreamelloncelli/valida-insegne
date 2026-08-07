@@ -1,16 +1,27 @@
-# silverc — validatore insegna d'argento FAI da file IGC
+# silverc — validatore insegne FAI da file IGC
 
 Analizza una traccia IGC e produce un report che dice, per ciascuno dei tre
-requisiti dell'insegna d'argento (Silver C), se e' soddisfatto, **come** e'
-stato verificato e **perche'** e' stato accettato o rifiutato.
+requisiti dell'insegna (argento o oro), se e' soddisfatto, **come** e' stato
+verificato e **perche'** e' stato accettato o rifiutato.
 
-## Requisiti verificati
+## Insegna d'argento (default)
 
 | Requisito | Soglia | Come viene misurato |
 |-----------|--------|---------------------|
 | Durata | 5 h | Dallo sgancio all'atterraggio (i fix registrati da fermo a fine volo vengono scartati) |
 | Distanza | 50 km | Distanza geodetica dallo sgancio al **punto più lontano** della traccia (non l'atterraggio); dev'essere oltre 50 km sia dallo sgancio sia dall'aeroporto di decollo, con perdita di quota ≤ 1% |
 | Guadagno di quota | 1000 m | Massima differenza fra un punto alto e un punto basso **che lo precede**, entrambi dopo lo sgancio |
+
+## Insegna d'oro (`--badge oro`)
+
+| Requisito | Soglia | Come viene misurato |
+|-----------|--------|---------------------|
+| Durata | 5 h | identica all'argento |
+| Distanza | 300 km | somma delle tratte del **percorso dichiarato** (record C dell'IGC); ogni punto va toccato **nell'ordine dichiarato** entrando nella sua zona di osservazione (500 m sulle virate, 1 km su partenza e arrivo) |
+| Guadagno di quota | 3000 m | stesso criterio dell'argento |
+
+Se il file non contiene una dichiarazione, la distanza d'oro e'
+`NON DETERMINABILE`: va dichiarata prima del volo.
 
 I tre requisiti possono essere ottenuti in **voli diversi**: il report li valuta
 in modo indipendente e indica quali sono coperti dalla traccia in esame.
@@ -24,9 +35,10 @@ uv run silverc volo.igc
 Opzioni utili:
 
 ```bash
-uv run silverc volo.igc --release-time 11:42:30 --verbose
+uv run silverc volo.igc --badge oro --release-time 11:42:30 --verbose
 ```
 
+- `--badge argento|oro`: insegna da verificare (default `argento`).
 - `--release-time HH:MM:SS` (UTC): l'IGC **non registra lo sgancio**. Senza
   questo parametro il programma lo stima dalla traccia (fine della salita
   continua iniziale) e lo dichiara nel report; se la stima e' poco affidabile
