@@ -1,0 +1,13 @@
+.git
+.gitignore
+.venv
+.pytest_cache
+.claude
+__pycache__
+**/__pycache__
+*.pyc
+test/
+Makefile
+REQUISITI.md
+*.igc
+.env

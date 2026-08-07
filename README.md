@@ -72,3 +72,27 @@ uv sync && uv run pytest -q
 Le tracce di test sono sintetiche e generate da `test/igc_builder.py`
 (rollover di mezzanotte, spike di quota, fix a terra finali, massimo di quota
 che precede il minimo).
+
+## Pubblicazione su Railway
+
+L'app e' containerizzata: Railway rileva il `Dockerfile` e la configurazione in
+`railway.json` (healthcheck su `/_stcore/health`). La porta arriva dalla
+variabile d'ambiente `PORT`, assegnata da Railway a runtime.
+
+Prova locale, identica a quella che gira in produzione:
+
+```bash
+make docker-run
+```
+
+Deploy dalla cartella corrente, senza bisogno di un remote git:
+
+```bash
+railway login && railway init && railway up
+```
+
+In alternativa si collega un repo GitHub dalla dashboard Railway e ogni push
+fa il deploy.
+
+Nessuna variabile d'ambiente da configurare: l'app non usa segreti e non
+persiste i file caricati.
