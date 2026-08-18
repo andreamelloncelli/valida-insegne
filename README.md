@@ -17,11 +17,14 @@ verificato e **perche'** e' stato accettato o rifiutato.
 | Requisito | Soglia | Come viene misurato |
 |-----------|--------|---------------------|
 | Durata | 5 h | identica all'argento |
-| Distanza | 300 km | somma delle tratte del **percorso dichiarato** (record C dell'IGC); ogni punto va toccato **nell'ordine dichiarato** entrando nella sua zona di osservazione (500 m sulle virate, 1 km su partenza e arrivo) |
+| Distanza | 300 km | con dichiarazione (record C dell'IGC): somma delle tratte del **percorso dichiarato**, ogni punto toccato **nell'ordine dichiarato** entrando nella sua zona di osservazione (500 m sulle virate, 1 km su partenza e arrivo). Senza dichiarazione: distanza in linea retta dallo sgancio al punto piu' lontano |
 | Guadagno di quota | 3000 m | stesso criterio dell'argento |
 
-Se il file non contiene una dichiarazione, la distanza d'oro e'
-`NON DETERMINABILE`: va dichiarata prima del volo.
+Se il file non contiene una dichiarazione, la distanza d'oro si valuta come
+distanza in linea retta con partenza allo sgancio: l'art. 13.2 del Regolamento
+Insegne non richiede la dichiarazione pre-volo per questa geometria. A
+differenza dell'argento non si applica il vincolo dei 50 km anche dal luogo di
+decollo, che l'art. 5.1a pone solo per la distanza d'argento.
 
 I tre requisiti possono essere ottenuti in **voli diversi**: il report li valuta
 in modo indipendente e indica quali sono coperti dalla traccia in esame.

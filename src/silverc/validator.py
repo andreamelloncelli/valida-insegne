@@ -155,28 +155,39 @@ def check_distance(analysis: FlightAnalysis, rules: BadgeRules = SILVER) -> Requ
         "Punto d'arrivo: il fix piu' lontano dallo sgancio fra tutti quelli "
         "della traccia (non l'atterraggio).",
         "Distanza in linea retta dal punto di sgancio a quel punto.",
-        "Il punto piu' lontano deve superare i 50 km sia dallo sgancio sia "
-        "dall'aeroporto di decollo.",
         f"Modello geodetico: {analysis.geodesic_model}.",
         f"Perdita di quota ammessa: {RULES.max_loss_of_height_ratio:.0%} della distanza.",
     ]
+    if rules.requires_distance_from_takeoff:
+        method.insert(
+            2,
+            f"Il punto piu' lontano deve superare i {rules.min_distance_m / 1000:.0f} km "
+            "sia dallo sgancio sia dall'aeroporto di decollo (art. 5.1a).",
+        )
     reasons = [
         f"Punto piu' lontano raggiunto alle {analysis.farthest.time:%H:%M:%S} UTC: "
         f"{distance / 1000:.2f} km dallo sgancio contro i "
         f"{rules.min_distance_m / 1000:.0f} km richiesti."
     ]
+    if rules.accepts_declared_task:
+        reasons.append(
+            "Percorso valutato come distanza in linea retta con partenza allo "
+            "sgancio: l'art. 13.2 non richiede la dichiarazione pre-volo per "
+            "questa geometria."
+        )
 
-    if from_takeoff < rules.min_distance_m:
-        verdict = Verdict.FAIL
-        reasons.append(
-            f"Dall'aeroporto di decollo il punto piu' lontano dista pero' solo "
-            f"{from_takeoff / 1000:.2f} km, sotto i {rules.min_distance_m / 1000:.0f} km richiesti."
-        )
-    else:
-        reasons.append(
-            f"Distanza dall'aeroporto di decollo: {from_takeoff / 1000:.2f} km, "
-            "anch'essa oltre la soglia."
-        )
+    if rules.requires_distance_from_takeoff:
+        if from_takeoff < rules.min_distance_m:
+            verdict = Verdict.FAIL
+            reasons.append(
+                f"Dall'aeroporto di decollo il punto piu' lontano dista pero' solo "
+                f"{from_takeoff / 1000:.2f} km, sotto i {rules.min_distance_m / 1000:.0f} km richiesti."
+            )
+        else:
+            reasons.append(
+                f"Distanza dall'aeroporto di decollo: {from_takeoff / 1000:.2f} km, "
+                "anch'essa oltre la soglia."
+            )
     if analysis.loss_of_height_m > max_loss:
         verdict = Verdict.FAIL
         reasons.append(
@@ -288,9 +299,11 @@ def validate_badge(
     flight: Flight, analysis: FlightAnalysis, rules: BadgeRules = SILVER
 ) -> ValidationReport:
     """Valuta i tre requisiti di un'insegna su un singolo volo."""
+    # Art. 13.2: senza dichiarazione il volo si valuta come distanza in linea
+    # retta con partenza allo sgancio, geometria ammessa anche per l'Oro.
     distance = (
         check_declared_distance(analysis, rules)
-        if rules.requires_declared_task
+        if rules.accepts_declared_task and analysis.task_check is not None
         else check_distance(analysis, rules)
     )
     requirements = [

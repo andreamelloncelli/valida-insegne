@@ -27,9 +27,16 @@ class BadgeRules:
     # SC3 §1.4.3 (guadagno di quota) - TO VERIFY
     min_height_gain_m: float = 1_000.0
 
-    # La distanza d'oro va volata su un percorso dichiarato prima del volo,
-    # quella d'argento no. - TO VERIFY
-    requires_declared_task: bool = False
+    # Art. 13.3-13.6: le geometrie con meta, virate, andata e ritorno o
+    # triangolo vanno dichiarate prima del volo. Non e' un obbligo dell'insegna
+    # ma della geometria: l'art. 13.2 ammette la linea retta con partenza allo
+    # sgancio, senza dichiarazione, anche per l'Insegna d'Oro.
+    accepts_declared_task: bool = False
+
+    # Art. 5.1a: la distanza d'argento dev'essere di almeno 50 km sia dallo
+    # sgancio sia dal luogo di decollo. L'art. 13.2 non pone la seconda
+    # condizione per le altre insegne.
+    requires_distance_from_takeoff: bool = True
 
     # Numero massimo di punti di virata ammessi nella dichiarazione. - TO VERIFY
     max_turnpoints: int = 3
@@ -93,7 +100,8 @@ GOLD = BadgeRules(
     min_distance_m=300_000.0,
     min_duration_s=5 * 3600,
     min_height_gain_m=3_000.0,
-    requires_declared_task=True,
+    accepts_declared_task=True,
+    requires_distance_from_takeoff=False,
 )
 BADGES = {SILVER.name: SILVER, GOLD.name: GOLD}
 

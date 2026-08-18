@@ -59,9 +59,12 @@ Presuppone l'insegna d'argento già conseguita.
 
 ### 2. Distanza — 300 km
 
-- Almeno **300 km** su un percorso **dichiarato prima del volo**, con un
-  massimo di 3 punti di virata (linea retta, andata e ritorno o triangolo).
-- Ogni punto di virata dichiarato va documentato dalla traccia.
+- Almeno **300 km**. Due strade:
+  - **linea retta con partenza allo sgancio**: nessuna dichiarazione richiesta
+    (art. 13.2), si misura fino al punto piu' lontano della traccia;
+  - **percorso dichiarato prima del volo** (meta, fino a 3 punti di virata,
+    andata e ritorno o triangolo): ogni punto dichiarato va documentato dalla
+    traccia.
 - **Perdita di quota** non superiore all'**1% della distanza** (3000 m su
   300 km).
 
