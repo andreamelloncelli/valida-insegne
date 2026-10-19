@@ -168,7 +168,7 @@ def test_turnpoints_must_be_in_declared_order(tmp_path):
 
 
 def test_straight_line_300km_without_declaration_passes(tmp_path):
-    # Art. 13.2: linea retta con partenza allo sgancio, senza dichiarazione.
+    # §1.4.2d: linea retta con partenza allo sgancio, senza coordinate dichiarate.
     straight = [(3000.0, 0.0), (310_000.0, 0.0)]
     path = build_gold_flight(tmp_path / "g.igc", legs=straight, declared=[])
     req, report = _requirement(path)
@@ -176,7 +176,7 @@ def test_straight_line_300km_without_declaration_passes(tmp_path):
     assert report.analysis.task_check is None
     assert req.verdict is Verdict.PASS
     assert float(req.measured.split()[0]) > 300
-    assert "13.2" in " ".join(req.reasons)
+    assert "1.4.2d" in " ".join(req.reasons)
 
 
 def test_short_straight_line_without_declaration_fails(tmp_path):
@@ -189,12 +189,12 @@ def test_short_straight_line_without_declaration_fails(tmp_path):
 
 
 def test_gold_straight_line_ignores_distance_from_takeoff(tmp_path):
-    # L'art. 5.1a (50 km anche dal luogo di decollo) vale solo per l'argento.
+    # Il §2.2.1a (50 km anche dal fix di decollo) vale solo per l'argento.
     straight = [(3000.0, 0.0), (310_000.0, 0.0)]
     path = build_gold_flight(tmp_path / "g.igc", legs=straight, declared=[])
     req, _ = _requirement(path)
 
-    assert "aeroporto di decollo" not in " ".join(req.reasons + req.method)
+    assert "corsa di decollo" not in " ".join(req.reasons + req.method)
 
 
 def test_declaration_after_takeoff_is_warned(tmp_path):

@@ -95,6 +95,18 @@ def test_distance_pass(tmp_path):
     assert "entro il limite" in " ".join(req.reasons)
 
 
+def test_silver_distance_notes_flight_without_guidance(tmp_path):
+    path = build_flight(
+        tmp_path / "x.igc",
+        soaring_duration_s=7200,
+        distance_m=60_000,
+        altitude=descending_profile(top=800, bottom=500),
+    )
+    req = _by_code(_report(path), "distanza")
+
+    assert "guida di un altro pilota" in " ".join(req.method)
+
+
 def test_distance_fails_on_excessive_loss_of_height(tmp_path):
     # 60 km => perdita massima ammessa 600 m; qui si scendono 780 m.
     path = build_flight(
@@ -219,7 +231,7 @@ def test_far_point_close_to_takeoff_airfield_fails(tmp_path):
     req = _by_code(validate_silver(flight, analysis), "distanza")
 
     assert req.verdict is Verdict.FAIL
-    assert "aeroporto di decollo" in " ".join(req.reasons)
+    assert "corsa di decollo" in " ".join(req.reasons)
 
 
 def test_distance_too_short(tmp_path):

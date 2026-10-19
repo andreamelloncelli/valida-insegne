@@ -9,7 +9,7 @@ verificato e **perche'** e' stato accettato o rifiutato.
 | Requisito | Soglia | Come viene misurato |
 |-----------|--------|---------------------|
 | Durata | 5 h | Dallo sgancio all'atterraggio (i fix registrati da fermo a fine volo vengono scartati) |
-| Distanza | 50 km | Distanza geodetica dallo sgancio al **punto più lontano** della traccia (non l'atterraggio); dev'essere oltre 50 km sia dallo sgancio sia dall'aeroporto di decollo, con perdita di quota entro i limiti del §2.4.4 (1% fino a 100 km, poi 1000 m con riduzione della distanza) |
+| Distanza | 50 km | Distanza geodetica dallo sgancio al **punto più lontano** della traccia (non l'atterraggio); dev'essere oltre 50 km sia dallo sgancio sia dal fix d'inizio della corsa di decollo (§2.2.1a), con perdita di quota entro i limiti del §2.4.4 (1% fino a 100 km, poi 1000 m con riduzione della distanza) |
 | Guadagno di quota | 1000 m | Massima differenza fra un punto alto e un punto basso **che lo precede**, entrambi dopo lo sgancio. Con un Position Recorder: quota GNSS e soglia +100 m |
 
 ## Insegna d'oro (`--badge oro`)
@@ -21,10 +21,14 @@ verificato e **perche'** e' stato accettato o rifiutato.
 | Guadagno di quota | 3000 m | stesso criterio dell'argento |
 
 Se il file non contiene una dichiarazione, la distanza d'oro si valuta come
-distanza in linea retta con partenza allo sgancio: l'art. 13.2 del Regolamento
-Insegne non richiede la dichiarazione pre-volo per questa geometria. A
-differenza dell'argento non si applica il vincolo dei 50 km anche dal luogo di
-decollo, che l'art. 5.1a pone solo per la distanza d'argento.
+distanza in linea retta con partenza allo sgancio (§1.4.2d): per questa
+geometria la dichiarazione non deve contenere le coordinate dei punti (§2.3). A
+differenza dell'argento non si applica il vincolo dei 50 km anche dal fix di
+decollo, che il §2.2.1a pone solo per la distanza d'argento.
+
+I riferimenti `§` sono al FAI Sporting Code Section 3 — Gliding, ed. 2025
+([`data/FAI_SC3_2025.pdf`](data/FAI_SC3_2025.pdf), fonte in
+[`data/FONTI.md`](data/FONTI.md)).
 
 ## Controlli sul file IGC
 
@@ -70,10 +74,11 @@ parziale o nulla, `2` errore di lettura del file.
 
 ## Limiti noti
 
-- Le soglie regolamentari sono raccolte in [`src/silverc/rules.py`](src/silverc/rules.py)
-  e provengono da **fonti secondarie**: il PDF ufficiale del FAI Sporting Code
-  Section 3 non era raggiungibile durante lo sviluppo. Ogni costante e' marcata
-  `TO VERIFY` con il riferimento presunto.
+- Le soglie regolamentari sono raccolte in [`src/silverc/rules.py`](src/silverc/rules.py),
+  ciascuna col suo paragrafo SC3. Le regole non ancora implementate sono negli
+  audit [`data/AUDIT_1_GENERALE.md`](data/AUDIT_1_GENERALE.md),
+  [`AUDIT_2_ARGENTO.md`](data/AUDIT_2_ARGENTO.md) e
+  [`AUDIT_3_ORO.md`](data/AUDIT_3_ORO.md).
 - Il **G-record non viene verificato**: la firma digitale richiede il programma
   `vali-*` del costruttore del logger. Il report lo dichiara esplicitamente.
 - L'euristica di sgancio non distingue un decollo autonomo a motore da un

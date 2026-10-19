@@ -1,10 +1,6 @@
-"""Costanti regolamentari FAI Sporting Code Section 3 (Class D - Alianti).
+"""Costanti regolamentari FAI Sporting Code Section 3 - Gliding, ed. 2025.
 
-ATTENZIONE: i valori qui raccolti provengono da fonti secondarie (guide NAC,
-riassunti pubblici del Sporting Code). Il PDF ufficiale non e' stato
-consultabile durante lo sviluppo. Ogni voce riporta il riferimento da
-verificare sull'edizione in vigore prima di usare il report per una richiesta
-ufficiale di omologazione.
+I riferimenti `§` sono ai paragrafi dello SC3 2025 (`data/FAI_SC3_2025.pdf`).
 """
 
 from __future__ import annotations
@@ -18,27 +14,26 @@ class BadgeRules:
 
     name: str = "argento"
 
-    # SC3 §1.4.2 (distanza) - TO VERIFY
+    # §2.2.1a (argento), §2.2.2a (oro)
     min_distance_m: float = 50_000.0
 
-    # SC3 §1.4.1 (durata) - TO VERIFY
+    # §2.2.1b, §2.2.2b
     min_duration_s: int = 5 * 3600
 
-    # SC3 §1.4.3 (guadagno di quota) - TO VERIFY
+    # §2.2.1c, §2.2.2c
     min_height_gain_m: float = 1_000.0
 
-    # Art. 13.3-13.6: le geometrie con meta, virate, andata e ritorno o
-    # triangolo vanno dichiarate prima del volo. Non e' un obbligo dell'insegna
-    # ma della geometria: l'art. 13.2 ammette la linea retta con partenza allo
-    # sgancio, senza dichiarazione, anche per l'Insegna d'Oro.
+    # §2.2.2a: l'oro ammette i percorsi §1.4.2d-h, che salvo la linea retta
+    # dallo sgancio richiedono le coordinate dichiarate (§2.3). L'argento e'
+    # solo linea retta dallo sgancio (§2.2.1a).
     accepts_declared_task: bool = False
 
-    # Art. 5.1a: la distanza d'argento dev'essere di almeno 50 km sia dallo
-    # sgancio sia dal luogo di decollo. L'art. 13.2 non pone la seconda
-    # condizione per le altre insegne.
+    # §2.2.1a: il fix d'arrivo d'argento dev'essere ad almeno 50 km sia dallo
+    # sgancio sia dal fix d'inizio della corsa di decollo. Per l'oro la linea
+    # retta (§1.4.2d) non pone la seconda condizione.
     requires_distance_from_takeoff: bool = True
 
-    # Numero massimo di punti di virata ammessi nella dichiarazione. - TO VERIFY
+    # Tabella §1.4.4: al massimo 3 punti di virata dichiarati.
     max_turnpoints: int = 3
 
     # SC3 §2.4.4 - perdita di quota fra partenza e arrivo. Fino a 100 km di
@@ -94,9 +89,11 @@ class AnalysisParams:
     # piu' vicino, oltre la quale il dato non e' considerato affidabile.
     max_release_time_mismatch_s: float = 120.0
 
-    # Zone di osservazione del percorso dichiarato: cilindro attorno al punto
-    # di virata e alle linee di partenza/arrivo. Il Sporting Code ammette anche
-    # il settore FAI di 90 gradi e raggio 3 km per i punti di virata. - TO VERIFY
+    # Zone di osservazione del percorso dichiarato. Il cilindro da 500 m sulle
+    # virate e' una delle due zone del §1.2.6; l'altra, il settore a 90 gradi
+    # di raggio illimitato, non e' ancora gestita. Il cilindro di 1 km su
+    # partenza e arrivo e' un'approssimazione: il §1.2.12 chiede una linea di
+    # 1 km perpendicolare alla tratta (vedi Audit 3, OK6).
     turnpoint_zone_radius_m: float = 500.0
     start_finish_zone_radius_m: float = 1_000.0
 

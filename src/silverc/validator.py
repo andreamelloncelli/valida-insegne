@@ -251,7 +251,12 @@ def check_distance(analysis: FlightAnalysis, rules: BadgeRules = SILVER) -> Requ
         method.insert(
             2,
             f"Il punto piu' lontano deve superare i {rules.min_distance_m / 1000:.0f} km "
-            "sia dallo sgancio sia dall'aeroporto di decollo (art. 5.1a).",
+            "sia dallo sgancio sia dal fix d'inizio della corsa di decollo (§2.2.1a).",
+        )
+        method.append(
+            "La distanza d'argento dovrebbe essere volata senza la guida di un altro "
+            "pilota (§2.2.1a, testo informativo): la traccia non permette di "
+            "verificarlo."
         )
     reasons = [
         f"Punto piu' lontano raggiunto alle {analysis.farthest.time:%H:%M:%S} UTC: "
@@ -261,20 +266,21 @@ def check_distance(analysis: FlightAnalysis, rules: BadgeRules = SILVER) -> Requ
     if rules.accepts_declared_task:
         reasons.append(
             "Percorso valutato come distanza in linea retta con partenza allo "
-            "sgancio: l'art. 13.2 non richiede la dichiarazione pre-volo per "
-            "questa geometria."
+            "sgancio (§1.4.2d): per questa geometria la dichiarazione (pilota e "
+            "identificativo dell'aliante) non deve contenere le coordinate dei "
+            "punti (§2.3)."
         )
 
     if rules.requires_distance_from_takeoff:
         if from_takeoff < rules.min_distance_m:
             verdict = Verdict.FAIL
             reasons.append(
-                f"Dall'aeroporto di decollo il punto piu' lontano dista pero' solo "
+                f"Dal fix d'inizio della corsa di decollo il punto piu' lontano dista pero' solo "
                 f"{from_takeoff / 1000:.2f} km, sotto i {rules.min_distance_m / 1000:.0f} km richiesti."
             )
         else:
             reasons.append(
-                f"Distanza dall'aeroporto di decollo: {from_takeoff / 1000:.2f} km, "
+                f"Distanza dal fix d'inizio della corsa di decollo: {from_takeoff / 1000:.2f} km, "
                 "anch'essa oltre la soglia."
             )
     if loss.invalid:
@@ -382,8 +388,8 @@ def validate_badge(
     flight: Flight, analysis: FlightAnalysis, rules: BadgeRules = SILVER
 ) -> ValidationReport:
     """Valuta i tre requisiti di un'insegna su un singolo volo."""
-    # Art. 13.2: senza dichiarazione il volo si valuta come distanza in linea
-    # retta con partenza allo sgancio, geometria ammessa anche per l'Oro.
+    # Senza percorso dichiarato il volo si valuta come distanza in linea retta
+    # con partenza allo sgancio (§1.4.2d), ammessa anche per l'oro (§2.2.2a).
     distance = (
         check_declared_distance(analysis, rules)
         if rules.accepts_declared_task and analysis.task_check is not None

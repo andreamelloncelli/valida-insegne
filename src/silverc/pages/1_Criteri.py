@@ -26,7 +26,7 @@ Ufficiale.
   riconoscibile (HFGTY) e marche (HFGID). La sigla di gara (HFCID) è
   facoltativa.
 - **Registratore**: si distingue fra *Flight Recorder* approvato IGC e
-  semplice *Position Recorder* (art. 9.1: entrambi ammessi per Argento e Oro).
+  semplice *Position Recorder* (§2.2.6a: entrambi ammessi per Argento e Oro).
   È considerato Flight Recorder solo un logger con codice costruttore
   approvato nel record A, G-record presente e modello dichiarato (HFFTY); in
   ogni altro caso, anche con una descrizione vaga, si ricade sul Position
@@ -61,7 +61,9 @@ confidenza.
 - Almeno **50 km** in linea retta dal punto di sgancio al punto più
   lontano raggiunto in volo.
 - Il punto più lontano deve distare oltre 50 km **sia dallo sgancio sia
-  dall'aeroporto di decollo**.
+  dal fix d'inizio della corsa di decollo** (§2.2.1a).
+- La distanza dovrebbe essere volata senza la guida di un altro pilota
+  (§2.2.1a, testo informativo): non è verificabile dalla traccia.
 - **Perdita di quota** fra punto di partenza e punto d'arrivo (§2.4.4):
   fino a 100 km non oltre l'**1% della distanza** (500 m su 50 km),
   altrimenti la prova non è valida; oltre i 100 km il limite è
@@ -87,7 +89,7 @@ Presuppone l'insegna d'argento già conseguita.
 
 ### 2. Distanza — 300 km
 - Almeno **300 km**, o in **linea retta con partenza allo sgancio**
-  (nessuna dichiarazione richiesta, art. 13.2), oppure su un
+  (senza coordinate dichiarate, §1.4.2d e §2.3), oppure su un
   percorso **dichiarato prima del volo**, con un
   massimo di 3 punti di virata (linea retta, andata e ritorno o
   triangolo).

@@ -6,11 +6,11 @@ Le regole valgono per entrambe le insegne; le soglie e la geometria della distan
 di ciascuna sono in [Audit 2 — Argento](AUDIT_2_ARGENTO.md) e [Audit 3 — Oro](AUDIT_3_ORO.md).
 Diamanti, diplomi e record sono fuori ambito.
 
-I riferimenti `§` sono allo SC3. Dove il Regolamento Insegne AeCI dice altro, la voce è
-segnata ⚖️ ed è una decisione da prendere, non un errore del codice. Le voci che rimandano
-all'Annex C (SC3C, non scaricato) sono da verificare.
+I riferimenti `§` sono allo SC3, unico regolamento di riferimento: il Regolamento Insegne
+AeCI non si considera. Le voci che rimandano all'Annex C (SC3C, non scaricato) sono da
+verificare.
 
-Legenda: ✅ conforme · 🟡 parziale · ❌ mancante o errato · ⚖️ conflitto SC3/AeCI.
+Legenda: ✅ conforme · 🟡 parziale · ❌ mancante o errato.
 Codici: **T** trasversali, **D** durata, **Q** guadagno di quota, **K** distanza.
 
 ## Requisiti per prova (tabella §1.4.4)
@@ -40,7 +40,7 @@ Codici: **T** trasversali, **D** durata, **Q** guadagno di quota, **K** distanza
 | GT13 | Imprecisioni di misura al massimo svantaggio del pilota | §4.3.4b | 🟡 |
 | GT14 | Firma del file (G-record) verificata col programma IGC | §4.3.4a | 🟡 |
 | GT15 | Versione hardware del registratore (HFRHW) nel report | Maurizio | ❌ |
-| GT16 | Riferimenti AeCI e `TO VERIFY` sostituiti con i paragrafi SC3 | — | ❌ |
+| GT16 | Riferimenti AeCI e `TO VERIFY` sostituiti con i paragrafi SC3 | — | ✅ |
 
 **GT1 — Registratore.** Il codice distingue FR e PR dal codice costruttore, dal G-record e
 da HFFTY. Non può verificare il livello di approvazione né la lista PR della NAC: lo dice
@@ -79,8 +79,7 @@ pagina web no. Serve un campo HH:MM:SS UTC.
 **GT9 — Identificativo dell'aliante.** Per il §1.1.3 basta una fra marche e sigla di gara.
 Il codice esige le marche (HFGID) e tratta la sigla come facoltativa: un file con sola
 sigla risulta incompleto a torto. Il tipo di aliante (HFGTY) non fa parte della
-dichiarazione: lo conferma l'OO al decollo (§4.3.1). ⚖️ Se l'AeCI chiede comunque marche e
-tipo, va deciso quale regola seguire.
+dichiarazione: lo conferma l'OO al decollo (§4.3.1).
 
 **GT10 — Errori nell'intestazione.** Per Argento e Oro un nome o un identificativo
 sbagliati non annullano la prova: l'OO allega un certificato di correzione. Il report non
@@ -98,11 +97,10 @@ non ammette più: va tolto, o in quel caso va bloccato il verdetto.
 scelta del codice. Il §4.3.4b chiede di risolvere ogni dubbio a sfavore del pilota: il
 report deve dire che «al limite» non è un esito valido per la richiesta.
 
-**GT16 — Riferimenti normativi.** Gli articoli AeCI (5.1a, 9.1, 13.2) e i `TO VERIFY`
-compaiono in `rules.py`, nei messaggi del report (`validator.py`), nella pagina Criteri,
-nel README e in REQUISITI. Il messaggio sulla linea retta per l'Oro dice che «l'art. 13.2
-non richiede la dichiarazione pre-volo»: per lo SC3 la dichiarazione serve comunque (pilota
-e identificativo) e mancano solo le coordinate (§2.3).
+**GT16 — Riferimenti normativi.** Risolto: `rules.py`, i messaggi del report, la pagina
+Criteri, README e REQUISITI citano i paragrafi SC3 al posto degli articoli AeCI e dei
+`TO VERIFY`. Il messaggio sulla linea retta per l'Oro ora dice che la dichiarazione
+(pilota e identificativo) non deve contenere le coordinate (§1.4.2d, §2.3).
 
 ## Durata
 
@@ -131,13 +129,11 @@ Identico per le due insegne salvo la soglia (1000 m Argento, 3000 m Oro).
 | GQ1 | Punto alto meno un punto basso precedente, dopo lo sgancio | §1.3.5, §1.4.4 | ✅ |
 | GQ2 | Margine di 100 m con quota GNSS | §2.4.3c | 🟡 (= GT2) |
 | GQ3 | Quota barometrica corretta con la taratura | §2.4.3a | ❌ (= GT3) |
-| GQ4 | Punto basso vincolato alla quota di sgancio | AeCI art. 12.1 | ⚖️ |
+| GQ4 | Nessun vincolo sul punto basso oltre a seguire lo sgancio | §1.3.5 | ✅ |
 | GQ5 | Dichiarazione con pilota e identificativo | §1.4.4 | 🟡 (= GT11) |
 
-**GQ4 — Punto basso.** Lo SC3 non pone vincoli sul punto basso. L'AeCI (art. 12.1) ammette
-solo la differenza fra quota massima e quota di sgancio, o fra quota massima e un minimo
-precedente **più basso dello sgancio**. Il codice segue lo SC3. Se si sceglie l'AeCI, il
-codice può sovrastimare il guadagno.
+**GQ4 — Punto basso.** Lo SC3 non vincola il punto basso alla quota di sgancio: basta che
+preceda il punto alto (§1.3.5). Il codice fa già così.
 
 ## Distanza: regole comuni
 

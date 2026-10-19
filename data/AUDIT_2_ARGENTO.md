@@ -20,7 +20,7 @@ all'atterraggio (§2.2.1a). La dichiarazione non richiede coordinate (§2.3).
 | AK1 | Almeno 50 km in linea retta dallo sgancio a un fix della traccia | §2.2.1a, §1.4.4 | ✅ |
 | AK2 | Lo stesso fix a ≥ 50 km anche dal fix d'inizio della corsa di decollo | §2.2.1a | 🟡 |
 | AK3 | Distanza valutata anche se il file contiene un percorso dichiarato | §1.4.4, nota | ✅ |
-| AK4 | Nota: volo senza guida di un altro pilota | §2.2.1a (informativo) | ❌ |
+| AK4 | Nota: volo senza guida di un altro pilota | §2.2.1a (informativo) | ✅ |
 
 **AK2 — Scelta del fix d'arrivo.** Il codice prende il fix più lontano dallo sgancio e
 poi controlla che sia oltre 50 km anche dal decollo. Se quel fix non lo è, il volo è
@@ -28,8 +28,8 @@ bocciato, ma un altro fix potrebbe soddisfare entrambe le condizioni. Il codice 
 **troppo severo**: va cercato un fix che massimizzi la minore delle due distanze.
 
 **AK4 — Guida di un altro pilota.** Testo in corsivo, quindi informativo (§1.0.2), e non
-verificabile dalla traccia. Basta una nota nel report. ⚖️ L'AeCI parla di assistenza radio
-o di navigazione: va scelto quale testo citare.
+verificabile dalla traccia. Risolto con una nota nel metodo della prova di distanza, che
+cita il testo SC3.
 
 ## Guadagno di quota
 
@@ -39,4 +39,4 @@ o di navigazione: va scelto quale testo citare.
 
 ## Ordine di lavoro suggerito
 
-AK2 → AK4.
+AK2.
