@@ -5,9 +5,10 @@ from __future__ import annotations
 import logging
 import statistics
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 
+from silverc.calibration import CalibrationTable
 from silverc.course import TaskCheck, verify_declared_task
 from silverc.documentation import RecorderInfo, RecorderKind, classify_recorder
 from silverc.geo import (
@@ -356,18 +357,36 @@ def analyse(
     recorder_kind: RecorderKind | None = None,
     calibrated: bool = False,
     motorglider: bool = False,
+    calibration: CalibrationTable | None = None,
 ) -> FlightAnalysis:
     """Calcola tutte le grandezze necessarie alla validazione.
 
     `recorder_kind` forza il tipo di registratore; se assente si ricava dal file.
     `calibrated` indica che il registratore ha dati di taratura barometrica:
     solo allora si usa la quota barometrica senza margine (§2.4.6).
+    `calibration` e' la tabella del certificato di taratura: la quota
+    barometrica viene corretta (§2.4.3a) e il registratore si considera tarato.
     `motorglider` indica un aliante con motore: lo sgancio puo' essere lo
     spegnimento del motore e le prove finiscono al suo avvio (§1.2.8, §1.3.2c).
     """
     started = time.perf_counter()
-    fixes = flight.fixes
     notes: list[str] = []
+    fixes = flight.fixes
+    if calibration is not None:
+        calibrated = True
+        fixes = [
+            replace(f, pressure_alt=round(calibration.correct(f.pressure_alt)))
+            if f.pressure_alt is not None
+            else f
+            for f in fixes
+        ]
+        recorded = [f.pressure_alt for f in flight.fixes if f.pressure_alt is not None]
+        if recorded and (min(recorded) < calibration.low_m or max(recorded) > calibration.high_m):
+            notes.append(
+                f"Quote registrate fra {min(recorded)} e {max(recorded)} m, oltre la tabella "
+                f"di taratura ({calibration.low_m:.0f}-{calibration.high_m:.0f} m): la "
+                "correzione e' estrapolata, da verificare."
+            )
     recorder = classify_recorder(flight, recorder_kind)
 
     baro = [f.pressure_alt for f in fixes if f.pressure_alt is not None]
@@ -395,7 +414,13 @@ def analyse(
             "Quota GNSS assente o costante: senza una quota barometrica tarata "
             "i requisiti di quota non sono determinabili."
         )
-    altitude_source = "GNSS" if use_gnss_altitude else "barometrica (ISA 1013.25 hPa)"
+    altitude_source = (
+        "GNSS"
+        if use_gnss_altitude
+        else "barometrica corretta con la tabella di taratura (§2.4.3a)"
+        if calibration is not None
+        else "barometrica (ISA 1013.25 hPa)"
+    )
 
     moving = _moving_flags(fixes)
     takeoff = detect_takeoff(fixes, moving)

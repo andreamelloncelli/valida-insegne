@@ -7,6 +7,7 @@ import logging
 import sys
 
 from silverc.analysis import analyse, parse_release_time
+from silverc.calibration import CalibrationError, load_calibration
 from silverc.documentation import RecorderKind
 from silverc.igc import IGCParseError, parse_igc
 from silverc.report import render
@@ -62,6 +63,12 @@ def build_parser() -> argparse.ArgumentParser:
         "senza margine; altrimenti quota GNSS e margine di 100 m (SC3 §2.4.6)",
     )
     parser.add_argument(
+        "--calibration",
+        metavar="FILE.csv",
+        help="tabella del certificato di taratura (quota indicata, quota vera in metri): "
+        "corregge la quota barometrica e implica --calibrated (SC3 §2.4.3a)",
+    )
+    parser.add_argument(
         "--motorglider",
         action="store_true",
         help="aliante con motore: lo sgancio puo' essere lo spegnimento del motore e le "
@@ -99,6 +106,14 @@ def main(argv: list[str] | None = None) -> int:
         except ValueError as exc:
             parser.error(str(exc))
 
+    calibration = None
+    if args.calibration is not None:
+        try:
+            calibration = load_calibration(args.calibration)
+        except CalibrationError as exc:
+            sys.stderr.write(f"Errore: {exc}\n")
+            return EXIT_ERROR
+
     analysis = analyse(
         flight,
         release_time=release_time,
@@ -106,6 +121,7 @@ def main(argv: list[str] | None = None) -> int:
         recorder_kind=_RECORDER_CHOICES[args.recorder],
         calibrated=args.calibrated,
         motorglider=args.motorglider,
+        calibration=calibration,
     )
     report = validate_badge(
         flight, analysis, BADGES[args.badge], internet_declaration=args.internet_declaration

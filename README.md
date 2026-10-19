@@ -44,7 +44,9 @@ prove:
   Recorder*. Con `--recorder fr|pr` il tipo si indica a mano.
 - **quota**: senza dati di taratura barometrica, con un FR come con un PR, si
   usa la quota GNSS con un margine di 100 m su tutti i requisiti di quota
-  (§2.4.6a, §2.4.3c). Con `--calibrated` si usa la quota barometrica.
+  (§2.4.6a, §2.4.3c). Con `--calibrated` si usa la quota barometrica; con
+  `--calibration tabella.csv` la si corregge anche con il certificato di
+  taratura (§2.4.3a).
 
 I tre requisiti possono essere ottenuti in **voli diversi**: il report li valuta
 in modo indipendente e indica quali sono coperti dalla traccia in esame.
@@ -75,6 +77,9 @@ uv run silverc volo.igc --badge oro --release-time 11:42:30 --verbose
 - `--calibrated`: il registratore ha dati di taratura barometrica; si usa la
   quota barometrica senza margine. Senza questa opzione quota GNSS e margine
   di 100 m (§2.4.6a).
+- `--calibration FILE.csv`: tabella del certificato di taratura, due colonne
+  (quota indicata, quota vera in metri); corregge la quota barometrica
+  (§2.4.3a) e implica `--calibrated`.
 - `--gnss-altitude`: usa la quota GNSS anche con dati di taratura, con il
   margine di 100 m.
 - `--verbose`: log di dettaglio su stderr.

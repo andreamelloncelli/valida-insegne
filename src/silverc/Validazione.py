@@ -12,6 +12,7 @@ from pathlib import Path
 import streamlit as st
 
 from silverc.analysis import analyse, parse_release_time
+from silverc.calibration import CalibrationError, parse_calibration
 from silverc.documentation import RecorderKind
 from silverc.igc import IGCParseError, parse_igc
 from silverc.report import render
@@ -51,6 +52,12 @@ release_input = st.text_input(
     help="L'IGC non registra lo sgancio: se lasciato vuoto viene stimato dalla "
     "traccia. Indicarlo quando la stima ha confidenza bassa (SC3 §2.4.2a).",
 )
+calibration_file = st.file_uploader(
+    "Tabella di taratura (CSV: quota indicata, quota vera in metri)",
+    type=["csv", "txt"],
+    help="Dal certificato di taratura (SC3 §4.4.2e): corregge la quota barometrica "
+    "(§2.4.3a) e implica i dati di taratura.",
+)
 motorglider = st.checkbox(
     "Aliante con motore",
     help="Lo sgancio può essere lo spegnimento del motore e le prove finiscono al suo "
@@ -82,6 +89,15 @@ if uploaded_file is not None:
                 except ValueError as exc:
                     st.error(f"Errore: {exc}")
                     st.stop()
+            calibration = None
+            if calibration_file is not None:
+                try:
+                    calibration = parse_calibration(
+                        calibration_file.getvalue().decode("utf-8-sig")
+                    )
+                except (CalibrationError, UnicodeDecodeError) as exc:
+                    st.error(f"Errore nella tabella di taratura: {exc}")
+                    st.stop()
             analysis = analyse(
                 flight,
                 release_time=release_time,
@@ -89,6 +105,7 @@ if uploaded_file is not None:
                 recorder_kind=_RECORDER_OPTIONS[recorder_choice],
                 calibrated=calibrated,
                 motorglider=motorglider,
+                calibration=calibration,
             )
             report = validate_badge(
                 flight, analysis, BADGES[badge], internet_declaration=internet_declaration

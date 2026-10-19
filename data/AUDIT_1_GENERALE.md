@@ -27,7 +27,7 @@ Codici: **T** trasversali, **D** durata, **Q** guadagno di quota, **K** distanza
 | --- | --- | --- | --- |
 | GT1 | Registratore: FR approvato livello 1–3 oppure PR approvato dalla NAC | §2.2.6a, §2.5 | ✅ |
 | GT2 | Quota GNSS con margine di 100 m su **tutti** i requisiti di quota quando manca la taratura barometrica | §2.4.3c, §2.4.6a | ✅ |
-| GT3 | Correzione della quota barometrica con la curva di taratura | §2.4.3a, §4.3.4c | ❌ |
+| GT3 | Correzione della quota barometrica con la curva di taratura | §2.4.3a, §4.3.4c | ✅ |
 | GT4 | Cadenza di almeno un fix al minuto | §2.4.1 | ✅ |
 | GT5 | Continuità: nessun atterraggio intermedio, buchi oltre 1 min da segnalare | §2.4.5, §4.3.5b | ✅ |
 | GT6 | Nessun uso del motore durante la prova | §2.4.5, §2.4.7 | ✅ |
@@ -64,7 +64,10 @@ condizione sulla quota GNSS.
 
 **GT3 — Correzione di taratura.** Con taratura disponibile, la quota barometrica va
 corretta con la curva quando è determinante (§2.4.3a). Il codice usa la quota ISA grezza.
-Basta, per cominciare, accettare una tabella di correzione opzionale.
+Basta, per cominciare, accettare una tabella di correzione opzionale. Risolto: una tabella
+CSV (quota indicata, quota vera) con `--calibration` o caricata nella pagina web corregge
+la quota barometrica per interpolazione lineare e implica i dati di taratura. La correzione
+si applica sempre, non solo quando la quota è determinante.
 
 **GT4 — Cadenza dei fix.** Risolto: se l'intervallo mediano fra sgancio e atterraggio
 supera i 60 s il report avverte che la cadenza impostata non rispetta il §2.4.1. I singoli
@@ -150,7 +153,7 @@ Identico per le due insegne salvo la soglia (1000 m Argento, 3000 m Oro).
 | --- | --- | --- | --- |
 | GQ1 | Punto alto meno un punto basso precedente, dopo lo sgancio | §1.3.5, §1.4.4 | ✅ |
 | GQ2 | Margine di 100 m con quota GNSS | §2.4.3c | ✅ (= GT2) |
-| GQ3 | Quota barometrica corretta con la taratura | §2.4.3a | ❌ (= GT3) |
+| GQ3 | Quota barometrica corretta con la taratura | §2.4.3a | ✅ (= GT3) |
 | GQ4 | Nessun vincolo sul punto basso oltre a seguire lo sgancio | §1.3.5 | ✅ |
 | GQ5 | Dichiarazione con pilota e identificativo | §1.4.4 | ✅ (= GT11) |
 
