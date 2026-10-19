@@ -36,7 +36,7 @@ percorsi chiusi hanno partenza e arrivo con coordinate identiche (§1.2.11).
 | OK7 | Quota al passaggio della linea interpolata fra i due fix | §2.4.3b | ✅ |
 | OK8 | Zone di virata: cilindro da 500 m **o** settore a 90° di raggio illimitato | §1.2.6 | 🟡 |
 | OK9 | −1 km per ogni virata raggiunta solo col cilindro | §1.3.6 | ❌ |
-| OK10 | Virata raggiunta anche se il segmento fra due fix attraversa la zona | §2.4.2c | ❌ |
+| OK10 | Virata raggiunta anche se il segmento fra due fix attraversa la zona | §2.4.2c | ✅ |
 | OK11 | Distanza ufficiale = percorso − correzioni zona − penalità di quota | §1.3.7 | 🟡 |
 | OK12 | Percorso chiuso: partenza e arrivo con le stesse coordinate | §1.2.11 | ✅ |
 | OK13 | Percorso dichiarato non completato: ripiego sulla linea retta | §2.2, §1.4.4 | ✅ |
@@ -91,7 +91,8 @@ Il commento in `rules.py` parla di un settore di raggio 3 km: lo SC3 2025 lo vuo
 illimitato.
 
 **OK10 — Attraversamento fra due fix.** Il codice esige un fix dentro la zona. Con fix
-radi un passaggio reale può risultare mancato: il codice è troppo severo.
+radi un passaggio reale può risultare mancato: il codice è troppo severo. Risolto in
+`course.turnpoint_indices`.
 
 **OK11 — Distanza ufficiale.** Somma la correzione delle zone (OK9) e la penalità di
 perdita di quota (GK1) sul percorso dichiarato. La geometria si sceglie già sulla distanza

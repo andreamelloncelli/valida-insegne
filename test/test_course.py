@@ -7,7 +7,13 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from silverc.course import CourseType, classify_course, is_closed, line_crossings
+from silverc.course import (
+    CourseType,
+    classify_course,
+    is_closed,
+    line_crossings,
+    turnpoint_indices,
+)
 from silverc.igc import DeclaredTask, Fix, Waypoint
 
 HOME = Waypoint(45.0, 9.0, "CASA")
@@ -81,3 +87,18 @@ def test_line_crossed_backwards_does_not_count():
 def test_passage_beside_the_line_does_not_count():
     # 600 m a nord del centro: oltre i 500 m per lato.
     assert _crossings([_fix(0, -100, 600, 1000), _fix(10, 300, 600, 1000)]) == []
+
+
+def test_turnpoint_reached_by_segment_between_fixes():
+    # Due fix a 1 km dalla virata, uno per parte: il segmento passa a 100 m.
+    tp = Waypoint(45.0, 9.0, "VIRATA")
+    fixes = [_fix(0, -1000, 100, 1000), _fix(60, 1000, 100, 1000)]
+
+    assert turnpoint_indices(fixes, tp, 0, 1) == [1]
+
+
+def test_segment_missing_the_zone_does_not_count():
+    tp = Waypoint(45.0, 9.0, "VIRATA")
+    fixes = [_fix(0, -1000, 700, 1000), _fix(60, 1000, 700, 1000)]
+
+    assert turnpoint_indices(fixes, tp, 0, 1) == []

@@ -192,14 +192,40 @@ def line_crossings(
     return crossings
 
 
-def _zone_indices(
-    fixes: list[Fix], waypoint: Waypoint, radius: float, start: int, end: int
-) -> list[int]:
-    return [
-        i
-        for i in range(start, end + 1)
-        if fast_distance_ll(waypoint.lat, waypoint.lon, fixes[i].lat, fixes[i].lon) <= radius
-    ]
+def _segment_distance(origin: Waypoint, a: Fix, b: Fix) -> float:
+    """Distanza minima da `origin` del segmento fra due fix, nel piano locale."""
+    ax, ay = _local_xy(origin, a.lat, a.lon)
+    bx, by = _local_xy(origin, b.lat, b.lon)
+    dx, dy = bx - ax, by - ay
+    span = dx * dx + dy * dy
+    t = 0.0 if span == 0 else max(0.0, min(1.0, -(ax * dx + ay * dy) / span))
+    return math.hypot(ax + t * dx, ay + t * dy)
+
+
+def turnpoint_indices(fixes: list[Fix], waypoint: Waypoint, start: int, end: int) -> list[int]:
+    """Indici dei fix con cui la virata e' raggiunta (§2.4.2c).
+
+    Basta un fix dentro la zona di osservazione o un segmento fra due fix
+    consecutivi che la attraversa: con fix radi un passaggio reale cadrebbe
+    altrimenti fra due fix esterni. In quel caso conta il secondo fix.
+    """
+    radius = PARAMS.turnpoint_zone_radius_m
+    indices: list[int] = []
+    previous: float | None = None
+    for i in range(start, end + 1):
+        distance = fast_distance_ll(waypoint.lat, waypoint.lon, fixes[i].lat, fixes[i].lon)
+        if distance <= radius:
+            indices.append(i)
+        elif previous is not None:
+            span = fast_distance_ll(fixes[i - 1].lat, fixes[i - 1].lon, fixes[i].lat, fixes[i].lon)
+            # Un segmento non puo' avvicinarsi al punto piu' di quanto dica la
+            # disuguaglianza triangolare: si evita il calcolo quasi sempre.
+            if min(distance, previous) - span <= radius and (
+                _segment_distance(waypoint, fixes[i - 1], fixes[i]) <= radius
+            ):
+                indices.append(i)
+        previous = distance
+    return indices
 
 
 def _first_after(indices: list[int], cursor: int) -> int | None:
@@ -303,9 +329,7 @@ def _verify_in_order(
     passages: list[int] = []
     for number, waypoint in enumerate(task.turnpoints, start=1):
         label = f"Virata {number}"
-        zone = _zone_indices(
-            fixes, waypoint, PARAMS.turnpoint_zone_radius_m, cursor, last_index
-        )
+        zone = turnpoint_indices(fixes, waypoint, cursor, last_index)
         if not zone:
             turnpoints.append(_missed(fixes, waypoint, label, _cylinder_zone(), cursor, last_index))
             continue
@@ -394,8 +418,7 @@ def _three_tp_candidates(
     """
     last_index = min(end_index, len(fixes) - 1)
     tp_zones = [
-        _zone_indices(fixes, tp, PARAMS.turnpoint_zone_radius_m, release.index, last_index)
-        for tp in task.turnpoints
+        turnpoint_indices(fixes, tp, release.index, last_index) for tp in task.turnpoints
     ]
     start_lines: dict[int, list[Crossing]] = {}
     finish_lines: dict[int, list[Crossing]] = {}
