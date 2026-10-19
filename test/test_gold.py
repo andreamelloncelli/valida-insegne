@@ -181,6 +181,26 @@ def test_turnpoint_reached_in_sector_has_no_correction(tmp_path):
     assert report.analysis.task_check.cylinder_correction_m == 0
 
 
+def test_straight_line_from_declared_start(tmp_path):
+    # Meta dichiarata a 420 km mai raggiunta. La partenza dichiarata e' 23 km
+    # a ovest dello sgancio: dallo sgancio la linea retta fa ~282 km, dalla
+    # partenza dichiarata ~305 km (§1.4.2d).
+    declared = [
+        (0.0, 0.0, "DECOLLO"),
+        (-20_000.0, 0.0, "PARTENZA"),
+        (400_000.0, 0.0, "META"),
+        (400_000.0, 0.0, "ATTERRAGGIO"),
+    ]
+    legs = [(3000.0, 0.0), (-22_000.0, 0.0), (285_000.0, 0.0)]
+    path = build_gold_flight(tmp_path / "g.igc", legs=legs, declared=declared)
+    req, report = _requirement(path)
+    check = report.analysis.task_check
+
+    assert check.course is CourseType.STRAIGHT
+    assert req.verdict is Verdict.PASS
+    assert 300 < check.distance_m / 1000 < 310
+
+
 def test_missed_turnpoint_fails(tmp_path):
     # Il volo si ferma a 150 km: la virata dichiarata a 160 km non viene toccata.
     short = [(3000.0, 0.0), (-2000.0, 0.0), (150_000.0, 0.0), (0.0, 0.0)]
@@ -188,8 +208,8 @@ def test_missed_turnpoint_fails(tmp_path):
     req, report = _requirement(path)
 
     assert req.verdict is Verdict.FAIL
-    assert report.analysis.task_check.missed[0].label == "Virata 1"
-    assert "NON raggiunto" in " ".join(req.reasons)
+    assert report.analysis.task_check.in_order.missed[0].label == "Virata 1"
+    assert "mancano: Virata 1" in " ".join(req.reasons)
 
 
 def test_declared_task_not_flown_is_not_accepted(tmp_path):

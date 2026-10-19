@@ -94,6 +94,8 @@ Presuppone l'insegna d'argento già conseguita.
   - virate: settore a 90° di raggio illimitato o cilindro di 500 m; ogni
     virata presa solo col cilindro toglie 1 km (§1.2.6, §1.3.6). Partenza e
     arrivo: linee di 1 km perpendicolari alla tratta (§1.2.12);
+  - ogni percorso dichiarato vale anche come linea retta dalla partenza
+    dichiarata a un fix (§1.4.2d);
   - vale la geometria con l'esito migliore, linea retta compresa (§2.2). Le
     distanze libere (§1.4.2i–l) valgono solo per i record.
 - **Perdita di quota** oltre i 100 km (§2.4.4): limite di **1000 m** (900 m

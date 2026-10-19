@@ -34,6 +34,7 @@ _EARTH_RADIUS_M = 6_371_000.0
 
 
 class CourseType(str, Enum):
+    STRAIGHT = "linea retta dalla partenza dichiarata (§1.4.2d)"
     GOAL = "meta (§1.4.2e)"
     THREE_TP = "fino a 3 virate (§1.4.2f)"
     OUT_AND_RETURN = "andata e ritorno (§1.4.2g)"
@@ -98,6 +99,8 @@ class TaskCheck:
     unused: list[Waypoint] = field(default_factory=list)
     # Correzione per le virate raggiunte solo col cilindro (§1.3.6).
     cylinder_correction_m: float = 0.0
+    # Verifica nella geometria dichiarata, quando la scelta e' un'altra.
+    in_order: TaskCheck | None = None
 
     @property
     def completed(self) -> bool:
@@ -687,6 +690,55 @@ def _three_tp_candidate(
     )
 
 
+def _straight_from_start(
+    fixes: list[Fix],
+    task: DeclaredTask,
+    release: Point,
+    end_index: int,
+    use_gnss: bool,
+) -> TaskCheck | None:
+    """Linea retta dalla partenza dichiarata a un fix (§1.4.2d).
+
+    La linea di partenza e' quella dichiarata, perpendicolare alla prima
+    tratta dichiarata: la tratta effettiva finisce a un fix scelto dopo il
+    volo e non e' nota in anticipo. Per ogni attraversamento dopo lo sgancio
+    si sceglie il fix d'arrivo migliore; vale l'esito migliore.
+    """
+    last_index = min(end_index, len(fixes) - 1)
+    crossings = line_crossings(
+        fixes, task.start, task.start, task.points[1], release.index, last_index, use_gnss
+    )
+    best: TaskCheck | None = None
+    for crossing in crossings:
+        if crossing.point.index >= last_index:
+            continue
+        fix_point = _best_finish_fix(
+            fixes, task.start, 0.0, crossing.altitude_m, crossing.point.index, last_index, use_gnss
+        )
+        waypoints = [
+            _crossed(task.start, "Partenza", crossing),
+            _at_fix(
+                _fix_waypoint(fix_point, "FIX"), "Fix d'arrivo", fix_point,
+                "fix scelto dopo il volo", use_gnss,
+            ),
+        ]
+        candidate = TaskCheck(
+            task=task,
+            waypoints=waypoints,
+            distance_m=geodesic_distance_ll(
+                task.start.lat, task.start.lon, fix_point.fix.lat, fix_point.fix.lon
+            ),
+            loss_of_height_m=_loss(waypoints),
+            course=CourseType.STRAIGHT,
+            declared_course=classify_course(task),
+            closed=is_closed(task),
+            unused=list(task.turnpoints),
+        )
+        if best is None or _official_key(candidate, use_gnss) > _official_key(best, use_gnss):
+            best = candidate
+    return best
+
+
 def _official_key(check: TaskCheck, use_gnss: bool) -> tuple[bool, float]:
     result = loss_of_height(check.distance_m, check.loss_of_height_m, use_gnss)
     return not result.invalid, result.official_m - check.cylinder_correction_m
@@ -707,17 +759,23 @@ def verify_declared_task(
     fino a 3 virate (§1.4.2f), che ammette ordine libero, sgancio come
     partenza e un fix come arrivo. Per una richiesta d'insegna questa
     geometria vale almeno quanto andata e ritorno e triangolo sullo stesso
-    volo, che quindi non serve valutare a parte. Se nessuna geometria e'
-    completata si restituisce la verifica nell'ordine dichiarato, che mostra
-    cosa manca.
+    volo, che quindi non serve valutare a parte. Ogni percorso si valuta
+    anche come linea retta dalla partenza dichiarata a un fix (§1.4.2d). Se
+    nessuna geometria e' completata si restituisce la verifica nell'ordine
+    dichiarato, che mostra cosa manca.
     """
     started = time.perf_counter()
     in_order = _verify_in_order(fixes, task, release, end_index, use_gnss)
     candidates = [in_order] if in_order.completed else []
     if 1 <= len(task.turnpoints) <= _MAX_THREE_TP:
         candidates += _three_tp_candidates(fixes, task, release, end_index, use_gnss)
+    straight = _straight_from_start(fixes, task, release, end_index, use_gnss)
+    if straight is not None:
+        candidates.append(straight)
     result = max(candidates, key=lambda c: _official_key(c, use_gnss)) if candidates else in_order
     result.start_before_release = in_order.start_before_release
+    if result is not in_order:
+        result.in_order = in_order
     logger.debug(
         "Percorso dichiarato: %d virate, tipo=%s, candidati=%d | %.1fms | scelto %s, "
         "distanza=%.1fkm, completato=%s, mancati=%s",

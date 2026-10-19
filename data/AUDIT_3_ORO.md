@@ -41,7 +41,7 @@ percorsi chiusi hanno partenza e arrivo con coordinate identiche (§1.2.11).
 | OK12 | Percorso chiuso: partenza e arrivo con le stesse coordinate | §1.2.11 | ✅ |
 | OK13 | Percorso dichiarato non completato: ripiego sulla linea retta | §2.2, §1.4.4 | ✅ |
 | OK14 | Sgancio prima della partenza, indicato nel report | Maurizio | ✅ |
-| OK15 | Linea retta da una linea di partenza dichiarata | §1.4.2d | ❌ |
+| OK15 | Linea retta da una linea di partenza dichiarata | §1.4.2d | ✅ |
 
 **OK2 — Tipo di percorso.** Ogni dichiarazione è trattata come una spezzata da percorrere
 in ordine. Va distinto il percorso dal numero di virate e dalla coincidenza fra partenza
@@ -118,7 +118,9 @@ le ammette solo per i record. Fatto in `validator.check_best_distance`: vale la 
 se la partenza è stata attraversata solo prima dello sgancio il report lo spiega.
 
 **OK15 — Linea retta con partenza dichiarata.** Il percorso (d) ammette anche una linea di
-partenza dichiarata invece dello sgancio. Non è gestito; dipende da OK2 e OK6.
+partenza dichiarata invece dello sgancio. Risolto in `course._straight_from_start`: la
+linea di partenza è quella dichiarata, perpendicolare alla prima tratta dichiarata, perché
+la tratta effettiva finisce a un fix scelto dopo il volo e non è nota in anticipo.
 
 ## Guadagno di quota
 
@@ -128,5 +130,5 @@ partenza dichiarata invece dello sgancio. Non è gestito; dipende da OK2 e OK6.
 
 ## Ordine di lavoro suggerito
 
-OK14 → OK2 → OK4 e OK5 → OK6 e OK7 → OK8 e OK9 → OK10 → OK11 → OK12 → OK15.
-OK13 fatto.
+Nessuna voce aperta. Le voci sono state fatte in quest'ordine: OK13, OK2 + OK12 + OK14,
+OK4 + OK5 + OK11, OK6 + OK7, OK10, OK8 + OK9, OK15.

@@ -362,6 +362,16 @@ def check_declared_distance(analysis: FlightAnalysis, rules: BadgeRules = GOLD) 
         f"Percorso dichiarato: {check.declared_course.value}; geometria valutata: "
         f"{check.course.value}.",
     ]
+    if check.in_order is not None and not check.in_order.completed:
+        reasons.append(
+            "Nella geometria dichiarata mancano: "
+            + ", ".join(
+                f"{w.label} '{w.waypoint.name}' ({w.zone}, avvicinamento minimo "
+                f"{w.closest_m / 1000:.2f} km)"
+                for w in check.in_order.missed
+            )
+            + "."
+        )
     if check.unused:
         reasons.append(
             "Virate dichiarate non usate: "
