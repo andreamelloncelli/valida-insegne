@@ -351,3 +351,83 @@ def test_marginal_result_is_not_valid_for_the_claim(tmp_path):
 
     assert req.verdict is Verdict.MARGINAL
     assert "§4.3.4b" in " ".join(req.reasons)
+
+
+def _set_enl(path, predicate, value: int = 800) -> None:
+    """Imposta l'ENL dei B-record il cui orario (secondi dall'inizio) soddisfa `predicate`."""
+
+    def edit(lines, b_index):
+        first = None
+        for i in b_index:
+            seconds = int(lines[i][1:3]) * 3600 + int(lines[i][3:5]) * 60 + int(lines[i][5:7])
+            first = seconds if first is None else first
+            if predicate(seconds - first):
+                lines[i] = lines[i][:35] + f"{value:03d}" + lines[i][38:]
+
+    _edit_b_records(path, edit)
+
+
+def _motorglider_report(path, motorglider: bool = True):
+    flight = parse_igc(path)
+    return validate_silver(flight, analyse(flight, motorglider=motorglider))
+
+
+def test_engine_start_ends_the_duration(tmp_path):
+    # Sei ore di volo, ma il motore parte dopo tre ore dallo sgancio.
+    path = build_flight(
+        tmp_path / "e.igc",
+        soaring_duration_s=6 * 3600,
+        distance_m=60_000,
+        altitude=climbing_profile(1500),
+        with_enl=True,
+    )
+    _set_enl(path, lambda t: t >= 420 + 3 * 3600)
+    report = _motorglider_report(path)
+    req = _by_code(report, "durata")
+
+    assert report.analysis.engine_start is not None
+    assert req.verdict is Verdict.FAIL
+    assert "avvio del motore" in " ".join(req.method)
+
+
+def test_engine_on_pure_glider_is_only_warned(tmp_path):
+    path = build_flight(
+        tmp_path / "e.igc",
+        soaring_duration_s=6 * 3600,
+        distance_m=60_000,
+        altitude=climbing_profile(1500),
+        with_enl=True,
+    )
+    _set_enl(path, lambda t: t >= 420 + 3 * 3600)
+    report = _motorglider_report(path, motorglider=False)
+
+    assert report.analysis.engine_start is None
+    assert any("--motorglider" in w for w in report.warnings)
+
+
+def test_motorglider_without_enl_is_warned(tmp_path):
+    path = build_flight(
+        tmp_path / "e.igc",
+        soaring_duration_s=3600,
+        distance_m=10_000,
+        altitude=climbing_profile(300),
+    )
+    report = _motorglider_report(path)
+
+    assert any("§2.4.7" in w for w in report.warnings)
+
+
+def test_self_launch_release_is_engine_stop(tmp_path):
+    # Motore acceso per tutta la salita iniziale: la prova parte allo spegnimento.
+    path = build_flight(
+        tmp_path / "e.igc",
+        soaring_duration_s=3600,
+        distance_m=10_000,
+        altitude=climbing_profile(300),
+        with_enl=True,
+    )
+    _set_enl(path, lambda t: 120 <= t <= 420)
+    analysis = _motorglider_report(path).analysis
+
+    assert "motore" in analysis.release_source
+    assert analysis.release.time.hour * 3600 + analysis.release.time.minute * 60 + analysis.release.time.second == 36000 + 450

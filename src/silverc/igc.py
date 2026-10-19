@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
@@ -28,6 +28,7 @@ class Fix:
     pressure_alt: int | None
     gnss_alt: int | None
     enl: int | None = None
+    mop: int | None = None
 
 
 @dataclass(frozen=True)
@@ -63,6 +64,7 @@ class Flight:
     rejected: list[tuple[int, str]] = field(default_factory=list)
     has_g_record: bool = False
     has_enl: bool = False
+    has_mop: bool = False
     source: str = ""
     a_record: str = ""
 
@@ -264,15 +266,7 @@ def parse_igc(path: str | Path) -> Flight:
             seconds = fix.time.hour * 3600 + fix.time.minute * 60 + fix.time.second
             if seconds < previous_seconds:
                 day_offset += 1
-                fix = Fix(
-                    time=fix.time + timedelta(days=1),
-                    lat=fix.lat,
-                    lon=fix.lon,
-                    valid=fix.valid,
-                    pressure_alt=fix.pressure_alt,
-                    gnss_alt=fix.gnss_alt,
-                    enl=fix.enl,
-                )
+                fix = replace(fix, time=fix.time + timedelta(days=1))
                 logger.debug("Rollover di mezzanotte alla riga %d | offset giorni: %d", lineno, day_offset)
             previous_seconds = seconds
             fixes.append(fix)
@@ -302,6 +296,7 @@ def parse_igc(path: str | Path) -> Flight:
         rejected=rejected,
         has_g_record=has_g_record,
         has_enl="ENL" in extensions,
+        has_mop="MOP" in extensions,
         source=str(path),
         a_record=a_record,
     )
@@ -334,12 +329,8 @@ def _parse_b_record(
     stamp = datetime(base.year, base.month, base.day, hh, mm, ss, tzinfo=timezone.utc)
     stamp += timedelta(days=day_offset)
 
-    enl: int | None = None
-    if "ENL" in extensions:
-        start, end = extensions["ENL"]
-        chunk = line[start:end].strip()
-        if chunk.isdigit():
-            enl = int(chunk)
+    enl = _extension_value(line, extensions, "ENL")
+    mop = _extension_value(line, extensions, "MOP")
 
     return Fix(
         time=stamp,
@@ -349,7 +340,16 @@ def _parse_b_record(
         pressure_alt=_parse_altitude(line[25:30]),
         gnss_alt=_parse_altitude(line[30:35]),
         enl=enl,
+        mop=mop,
     )
+
+
+def _extension_value(line: str, extensions: dict[str, tuple[int, int]], code: str) -> int | None:
+    if code not in extensions:
+        return None
+    start, end = extensions[code]
+    chunk = line[start:end].strip()
+    return int(chunk) if chunk.isdigit() else None
 
 
 def _filter_altitude_spikes(fixes: list[Fix], rejected: list[tuple[int, str]]) -> list[Fix]:

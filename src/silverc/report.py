@@ -71,6 +71,11 @@ def render(report: ValidationReport) -> str:
         f"               {analysis.distance_m / 1000:.2f} km dallo sgancio, "
         f"{analysis.distance_from_takeoff_m / 1000:.2f} km dal decollo",
         f"Atterraggio  : {analysis.landing.time:%H:%M:%S}  {_coords(analysis.landing)}",
+        *(
+            [f"Avvio motore : {analysis.engine_start.time:%H:%M:%S}  {_coords(analysis.engine_start)}"]
+            if analysis.engine_start is not None
+            else []
+        ),
         f"Quota usata  : {analysis.altitude_source}",
     ]
 

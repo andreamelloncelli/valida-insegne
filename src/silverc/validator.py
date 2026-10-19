@@ -161,8 +161,13 @@ def check_duration(analysis: FlightAnalysis, rules: BadgeRules = SILVER) -> Requ
     method = [
         f"Inizio conteggio allo sgancio delle {analysis.release.time:%H:%M:%S} UTC "
         f"({analysis.release_source}).",
-        f"Fine conteggio all'atterraggio delle {analysis.landing.time:%H:%M:%S} UTC, "
-        "individuato scartando i fix finali registrati da fermo.",
+        (
+            f"Fine conteggio all'avvio del motore delle {analysis.engine_start.time:%H:%M:%S} "
+            "UTC, che precede l'atterraggio (§1.3.2c)."
+            if analysis.engine_start is not None
+            else f"Fine conteggio all'atterraggio delle {analysis.landing.time:%H:%M:%S} UTC, "
+            "individuato scartando i fix finali registrati da fermo."
+        ),
     ]
     if analysis.release_confidence in {"bassa", "nulla"}:
         verdict = Verdict.UNDETERMINED
@@ -533,8 +538,10 @@ def validate_badge(
         )
     if analysis.engine_suspected:
         warnings.append(
-            f"ENL massimo dopo lo sgancio pari a {analysis.max_enl}: possibile uso "
-            "del motore, il volo potrebbe non essere un volo a vela puro."
+            f"ENL o MOP oltre soglia dopo lo sgancio (ENL massimo {analysis.max_enl}): "
+            "possibile uso del motore, vietato durante le prove (§2.4.5). Se "
+            "l'aliante ha un motore indicarlo (--motorglider o casella nella pagina "
+            "web): le prove finiranno al suo avvio."
         )
     invalid = sum(1 for f in flight.fixes if not f.valid)
     if invalid:

@@ -27,6 +27,7 @@ _FAI_SPHERE_RADIUS_M = 6_371_000.0
 
 RELEASE_SOURCE_MANUAL = "dichiarato dall'utente"
 RELEASE_SOURCE_HEURISTIC = "euristica sulla traccia"
+RELEASE_SOURCE_ENGINE = "spegnimento del motore (§1.2.8)"
 
 
 @dataclass(frozen=True)
@@ -84,10 +85,17 @@ class FlightAnalysis:
     median_fix_interval_s: float = 0.0
     gaps: list[tuple[Point, float]] = field(default_factory=list)
     intermediate_stops: list[tuple[Point, Point]] = field(default_factory=list)
+    motorglider: bool = False
+    engine_start: Point | None = None
+
+    @property
+    def finish(self) -> Point:
+        """Fine delle prove: l'avvio del motore se precede l'atterraggio (§1.3.2c)."""
+        return self.engine_start or self.landing
 
     @property
     def duration_s(self) -> float:
-        return (self.landing.time - self.release.time).total_seconds()
+        return (self.finish.time - self.release.time).total_seconds()
 
 
 def geodesic_distance_ll(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -360,6 +368,21 @@ def median_fix_interval_s(fixes: list[Fix], start_index: int, end_index: int) ->
     return statistics.median(intervals) if intervals else 0.0
 
 
+def engine_running(fix: Fix) -> bool:
+    """Il fix registra il motore acceso (ENL o MOP oltre soglia)?"""
+    return (fix.enl is not None and fix.enl >= PARAMS.enl_running_threshold) or (
+        fix.mop is not None and fix.mop >= PARAMS.mop_running_threshold
+    )
+
+
+def find_engine_run(fixes: list[Fix], start_index: int, end_index: int) -> Point | None:
+    """Primo fix col motore acceso fra due indici inclusi."""
+    for i in range(start_index, min(end_index + 1, len(fixes))):
+        if engine_running(fixes[i]):
+            return Point(i, fixes[i])
+    return None
+
+
 def find_gaps(
     fixes: list[Fix], start_index: int, end_index: int, max_interval_s: float
 ) -> list[tuple[Point, float]]:
@@ -447,12 +470,15 @@ def analyse(
     use_gnss_altitude: bool = False,
     recorder_kind: RecorderKind | None = None,
     calibrated: bool = False,
+    motorglider: bool = False,
 ) -> FlightAnalysis:
     """Calcola tutte le grandezze necessarie alla validazione.
 
     `recorder_kind` forza il tipo di registratore; se assente si ricava dal file.
     `calibrated` indica che il registratore ha dati di taratura barometrica:
     solo allora si usa la quota barometrica senza margine (§2.4.6).
+    `motorglider` indica un aliante con motore: lo sgancio puo' essere lo
+    spegnimento del motore e le prove finiscono al suo avvio (§1.2.8, §1.3.2c).
     """
     started = time.perf_counter()
     fixes = flight.fixes
@@ -509,10 +535,36 @@ def analyse(
     else:
         release, confidence, tow_climb = detect_release(fixes, takeoff, use_gnss_altitude)
         release_source = RELEASE_SOURCE_HEURISTIC
+        launch_run = (
+            find_engine_run(fixes, takeoff.index, release.index) if motorglider else None
+        )
+        if launch_run is not None:
+            # Decollo autonomo: la prova parte allo spegnimento del motore (§1.2.8).
+            stop = launch_run.index
+            while stop < landing.index and engine_running(fixes[stop]):
+                stop += 1
+            release, confidence, tow_climb = Point(stop, fixes[stop]), "alta", 0.0
+            release_source = RELEASE_SOURCE_ENGINE
 
-    gain = compute_height_gain(fixes, release.index, use_gnss_altitude, landing.index)
+    engine_start: Point | None = None
+    if motorglider:
+        if not (flight.has_enl or flight.has_mop):
+            notes.append(
+                "Motoaliante senza registrazione ENL o MOP: l'uso del motore non e' "
+                "verificabile dalla traccia, l'OO deve certificare il mezzo usato per "
+                "escluderlo (§2.4.5, §2.4.7)."
+            )
+        engine_start = find_engine_run(fixes, release.index + 1, landing.index)
+        if engine_start is not None:
+            notes.append(
+                f"Avvio del motore alle {engine_start.time:%H:%M:%S} UTC: le prove "
+                "finiscono li' (§1.3.2c, §2.4.5)."
+            )
+    finish = engine_start or landing
 
-    farthest = find_farthest_point(fixes, release.fix, release.index, landing.index)
+    gain = compute_height_gain(fixes, release.index, use_gnss_altitude, finish.index)
+
+    farthest = find_farthest_point(fixes, release.fix, release.index, finish.index)
     distance, model = geodesic_distance_m(release.fix, farthest.fix)
     distance_from_takeoff, _ = geodesic_distance_m(takeoff.fix, farthest.fix)
 
@@ -520,7 +572,7 @@ def analyse(
     far_alt = _altitude(farthest.fix, use_gnss_altitude)
     loss = float(release_alt - far_alt) if release_alt is not None and far_alt is not None else 0.0
 
-    balanced = find_balanced_point(fixes, release.fix, takeoff.fix, release.index, landing.index)
+    balanced = find_balanced_point(fixes, release.fix, takeoff.fix, release.index, finish.index)
     balanced_alt = _altitude(balanced.fix, use_gnss_altitude)
     balanced_finish = FinishFix(
         point=balanced,
@@ -533,7 +585,7 @@ def analyse(
         ),
     )
 
-    cadence = median_fix_interval_s(fixes, release.index, landing.index)
+    cadence = median_fix_interval_s(fixes, release.index, finish.index)
     if cadence > RULES.max_fix_interval_s:
         notes.append(
             f"Cadenza di registrazione di un fix ogni {cadence:.0f} s: lo SC3 chiede "
@@ -544,7 +596,7 @@ def analyse(
     # Con cadenza gia' oltre il minuto ogni intervallo sarebbe un buco: basta
     # l'avvertenza sulla cadenza.
     gaps = (
-        find_gaps(fixes, release.index, landing.index, RULES.max_fix_interval_s)
+        find_gaps(fixes, release.index, finish.index, RULES.max_fix_interval_s)
         if cadence <= RULES.max_fix_interval_s
         else []
     )
@@ -556,12 +608,13 @@ def analyse(
             f"{longest[0].time:%H:%M:%S} UTC): la continuita' del volo va confermata "
             "dall'OO o con la traccia di un secondo registratore (§2.4a, §2.4.5, §4.3.5b)."
         )
-    stops = find_intermediate_stops(fixes, moving, release.index, landing.index)
+    stops = find_intermediate_stops(fixes, moving, release.index, finish.index)
 
     enl_values = [f.enl for f in fixes[release.index : landing.index + 1] if f.enl is not None]
     max_enl = max(enl_values) if enl_values else None
-    engine_suspected = bool(
-        max_enl is not None and max_enl >= PARAMS.enl_running_threshold
+    # Su un motoaliante l'avvio del motore e' gia' gestito come fine delle prove.
+    engine_suspected = not motorglider and any(
+        engine_running(f) for f in fixes[release.index : landing.index + 1]
     )
 
     analysis = FlightAnalysis(
@@ -583,10 +636,12 @@ def analyse(
         median_fix_interval_s=cadence,
         gaps=gaps,
         intermediate_stops=stops,
+        motorglider=motorglider,
+        engine_start=engine_start,
         notes=notes,
         task_check=(
             verify_declared_task(
-                fixes, flight.task, release.index, landing.index, use_gnss_altitude
+                fixes, flight.task, release.index, finish.index, use_gnss_altitude
             )
             if flight.task is not None
             else None

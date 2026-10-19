@@ -62,6 +62,12 @@ def build_parser() -> argparse.ArgumentParser:
         "senza margine; altrimenti quota GNSS e margine di 100 m (SC3 §2.4.6)",
     )
     parser.add_argument(
+        "--motorglider",
+        action="store_true",
+        help="aliante con motore: lo sgancio puo' essere lo spegnimento del motore e le "
+        "prove finiscono al suo avvio (SC3 §1.2.8, §1.3.2c)",
+    )
+    parser.add_argument(
         "--internet-declaration",
         action="store_true",
         help="il pilota ha usato una dichiarazione via internet, che sostituisce quella "
@@ -99,6 +105,7 @@ def main(argv: list[str] | None = None) -> int:
         use_gnss_altitude=args.gnss_altitude,
         recorder_kind=_RECORDER_CHOICES[args.recorder],
         calibrated=args.calibrated,
+        motorglider=args.motorglider,
     )
     report = validate_badge(
         flight, analysis, BADGES[args.badge], internet_declaration=args.internet_declaration

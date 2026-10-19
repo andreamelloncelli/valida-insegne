@@ -51,6 +51,11 @@ release_input = st.text_input(
     help="L'IGC non registra lo sgancio: se lasciato vuoto viene stimato dalla "
     "traccia. Indicarlo quando la stima ha confidenza bassa (SC3 §2.4.2a).",
 )
+motorglider = st.checkbox(
+    "Aliante con motore",
+    help="Lo sgancio può essere lo spegnimento del motore e le prove finiscono al suo "
+    "avvio (SC3 §1.2.8, §1.3.2c). Serve la registrazione ENL o MOP (§2.4.7).",
+)
 internet_declaration = st.checkbox(
     "Dichiarazione via internet",
     help="Se ammessa dalla NAC sostituisce quella del registratore (SC3 §2.3a); va "
@@ -83,6 +88,7 @@ if uploaded_file is not None:
                 use_gnss_altitude=use_gnss_altitude,
                 recorder_kind=_RECORDER_OPTIONS[recorder_choice],
                 calibrated=calibrated,
+                motorglider=motorglider,
             )
             report = validate_badge(
                 flight, analysis, BADGES[badge], internet_declaration=internet_declaration

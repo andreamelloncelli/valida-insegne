@@ -82,8 +82,11 @@ class AnalysisParams:
     # Salita al traino minima perche' l'euristica sia considerata affidabile.
     min_tow_climb_m: float = 150.0
 
-    # ENL medio oltre il quale si sospetta uso del motore.
+    # ENL e MOP (0-999) oltre i quali il motore e' considerato acceso. Soglie
+    # non regolamentari: il criterio vero e' nel documento di approvazione del
+    # registratore, che l'OO consulta (§2.4.7).
     enl_running_threshold: int = 500
+    mop_running_threshold: int = 500
 
     # Escursione minima della quota barometrica sotto la quale il campo e'
     # considerato non compilato (loggers GPS che scrivono 00000).

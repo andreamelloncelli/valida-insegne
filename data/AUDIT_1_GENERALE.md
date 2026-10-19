@@ -30,7 +30,7 @@ Codici: **T** trasversali, **D** durata, **Q** guadagno di quota, **K** distanza
 | GT3 | Correzione della quota barometrica con la curva di taratura | §2.4.3a, §4.3.4c | ❌ |
 | GT4 | Cadenza di almeno un fix al minuto | §2.4.1 | ✅ |
 | GT5 | Continuità: nessun atterraggio intermedio, buchi oltre 1 min da segnalare | §2.4.5, §4.3.5b | ✅ |
-| GT6 | Nessun uso del motore durante la prova | §2.4.5, §2.4.7 | 🟡 |
+| GT6 | Nessun uso del motore durante la prova | §2.4.5, §2.4.7 | ✅ |
 | GT7 | Sgancio ricavato dalla traccia (inizio della discesa o della virata stretta) | §2.4.2a | ✅ |
 | GT8 | Sgancio inseribile a mano anche dall'interfaccia web | Maurizio | ✅ |
 | GT9 | Identificativo dell'aliante: marche **oppure** sigla di gara | §1.1.3 | ✅ |
@@ -79,7 +79,10 @@ rimando all'OO (§2.4.5).
 
 **GT6 — Motore.** C'è solo un'avvertenza con soglia ENL arbitraria (500). Per un
 motoaliante va segnalata anche l'**assenza** di ENL/MOP e la prova finisce all'avvio del
-motore (GD3). Con motore sigillato decide l'OO (§2.4.7).
+motore (GD3). Con motore sigillato decide l'OO (§2.4.7). Risolto con l'indicazione
+«motoaliante» (`--motorglider`, casella web): si legge anche MOP, l'assenza di ENL e MOP è
+segnalata, lo sgancio di un decollo autonomo è lo spegnimento del motore (§1.2.8) e le
+prove finiscono al suo avvio. Le soglie ENL e MOP (500) restano una scelta del codice.
 
 **GT8 — Sgancio dall'interfaccia web.** Risolto: la pagina web ha un campo HH:MM:SS UTC,
 letto con `analysis.parse_release_time` come `--release-time` da riga di comando.
@@ -127,12 +130,13 @@ Identica per le due insegne: 5 h (§2.2.1b, §2.2.2b).
 | --- | --- | --- | --- |
 | GD1 | Inizio allo sgancio | §1.3.1b | ✅ |
 | GD2 | 5 h senza tolleranza | §2.2.1b, §2.2.2b | ✅ |
-| GD3 | Fine al primo fra atterraggio e avvio del motore | §1.3.2c | ❌ |
+| GD3 | Fine al primo fra atterraggio e avvio del motore | §1.3.2c | ✅ |
 | GD4 | Dichiarazione non richiesta | §2.3 | ✅ |
 | GD5 | Cadenza di almeno un fix al minuto | §2.4.1 | ✅ (= GT4) |
 
 **GD3 — Motoalianti.** La durata finisce all'atterraggio. Se il motore viene avviato
-prima, la prova finisce lì. Dipende da GT6.
+prima, la prova finisce lì. Risolto con GT6: durata, guadagno e distanza si misurano fino
+all'avvio del motore.
 
 Il volo senza registratore, controllato a vista dall'OO (§2.4.1, §4.3.2), è fuori
 dall'ambito di uno strumento che analizza file IGC.

@@ -69,6 +69,7 @@ uv run silverc volo.igc --badge oro --release-time 11:42:30 --verbose
   stesso orario si indica nel campo *Orario di sgancio*.
 - `--recorder auto|fr|pr`: tipo di registratore (default `auto`, ricavato
   dal file).
+- `--motorglider`: aliante con motore (§1.2.8, §1.3.2c).
 - `--internet-declaration`: il pilota ha usato una dichiarazione via internet,
   che sostituisce quella del registratore (§2.3a).
 - `--calibrated`: il registratore ha dati di taratura barometrica; si usa la
@@ -90,9 +91,11 @@ parziale o nulla, `2` errore di lettura del file.
   [`AUDIT_3_ORO.md`](data/AUDIT_3_ORO.md).
 - Il **G-record non viene verificato**: la firma digitale richiede il programma
   `vali-*` del costruttore del logger. Il report lo dichiara esplicitamente.
-- L'euristica di sgancio non distingue un decollo autonomo a motore da un
-  traino; in presenza di estensione ENL il report segnala l'eventuale uso del
-  motore.
+- Per un aliante con motore va indicato `--motorglider` (o la casella nella
+  pagina web): lo sgancio di un decollo autonomo diventa lo spegnimento del
+  motore e le prove finiscono al suo avvio, rilevati da ENL o MOP con una
+  soglia non regolamentare. Senza l'indicazione l'uso del motore è solo
+  segnalato.
 - Il report e' un ausilio all'analisi, non un'omologazione.
 
 ## Sviluppo
