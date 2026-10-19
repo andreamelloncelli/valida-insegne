@@ -40,7 +40,7 @@ Codici: **T** trasversali, **D** durata, **Q** guadagno di quota, **K** distanza
 | GT13 | Imprecisioni di misura al massimo svantaggio del pilota | §4.3.4b | 🟡 |
 | GT14 | Firma del file (G-record) verificata col programma IGC | §4.3.4a | 🟡 |
 | GT15 | Versione hardware del registratore (HFRHW) nel report | Maurizio | ❌ |
-| GT16 | Riferimenti `TO VERIFY` in `rules.py` sostituiti con i paragrafi SC3 | — | ❌ |
+| GT16 | Riferimenti AeCI e `TO VERIFY` sostituiti con i paragrafi SC3 | — | ❌ |
 
 **GT1 — Registratore.** Il codice distingue FR e PR dal codice costruttore, dal G-record e
 da HFFTY. Non può verificare il livello di approvazione né la lista PR della NAC: lo dice
@@ -89,13 +89,19 @@ deve presentarli come bloccanti; oggi li segna come mancanti senza dirlo.
 confrontato col decollo. Una dichiarazione via internet sostituisce quella del registratore
 (§2.3a) e non è nel file: serve un modo per segnalarla.
 
-**GT12 — WGS84.** Con `geographiclib` è conforme. Senza la libreria si ricade sulla sfera
-FAI, che lo SC3 non ammette più: va resa una dipendenza obbligatoria o va bloccato il
-verdetto.
+**GT12 — WGS84.** `geographiclib` è già una dipendenza obbligatoria, quindi di norma il
+calcolo è conforme. Resta però il ripiego sulla sfera FAI se la libreria manca, che lo SC3
+non ammette più: va tolto, o in quel caso va bloccato il verdetto.
 
 **GT13 — Esito «al limite».** La banda dello 0,5% sulla distanza e sulla quota è una
 scelta del codice. Il §4.3.4b chiede di risolvere ogni dubbio a sfavore del pilota: il
 report deve dire che «al limite» non è un esito valido per la richiesta.
+
+**GT16 — Riferimenti normativi.** Gli articoli AeCI (5.1a, 9.1, 13.2) e i `TO VERIFY`
+compaiono in `rules.py`, nei messaggi del report (`validator.py`), nella pagina Criteri,
+nel README e in REQUISITI. Il messaggio sulla linea retta per l'Oro dice che «l'art. 13.2
+non richiede la dichiarazione pre-volo»: per lo SC3 la dichiarazione serve comunque (pilota
+e identificativo) e mancano solo le coordinate (§2.3).
 
 ## Durata
 
