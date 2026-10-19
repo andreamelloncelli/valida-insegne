@@ -297,7 +297,7 @@ def test_silver_picks_a_fix_far_from_both_origins(tmp_path):
     assert report.analysis.distance_from_takeoff_m < 50_000
     assert req.verdict is Verdict.PASS
     assert 50 < float(req.measured.split()[0]) < 52
-    assert "piu' lontano da entrambi" in " ".join(req.reasons)
+    assert "§1.2.10c" in " ".join(req.reasons)
 
 
 def test_report_shows_declared_course(tmp_path):

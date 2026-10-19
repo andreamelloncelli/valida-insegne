@@ -59,11 +59,11 @@ confidenza.
 - Nessuna tolleranza: 4 h 59 m non è valido.
 
 ### 2. Distanza — 50 km
-- Almeno **50 km** in linea retta dal punto di sgancio al punto più
-  lontano raggiunto in volo.
+- Almeno **50 km** in linea retta dal punto di sgancio a un **fix
+  d'arrivo** scelto dopo il volo (§1.2.10c), non necessariamente il più
+  lontano: conta l'esito ufficiale, perdita di quota compresa.
 - Lo stesso fix d'arrivo deve distare oltre 50 km **sia dallo sgancio sia
-  dal fix d'inizio della corsa di decollo** (§2.2.1a). Se il punto più
-  lontano dallo sgancio non basta, si cerca il fix più lontano da entrambi.
+  dal fix d'inizio della corsa di decollo** (§2.2.1a).
 - La distanza dovrebbe essere volata senza la guida di un altro pilota
   (§2.2.1a, testo informativo): non è verificabile dalla traccia.
 - **Perdita di quota** fra punto di partenza e punto d'arrivo (§2.4.4):

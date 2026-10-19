@@ -46,11 +46,11 @@ confidenza.
 
 ### 2. Distanza — 50 km
 
-- Almeno **50 km** in linea retta dal punto di sgancio al punto più lontano
-  raggiunto in volo.
+- Almeno **50 km** in linea retta dal punto di sgancio a un **fix d'arrivo**
+  scelto dopo il volo fra quelli registrati (§1.2.10c), non necessariamente il
+  più lontano: conta l'esito ufficiale, perdita di quota compresa.
 - Lo stesso fix d'arrivo deve distare oltre 50 km **sia dallo sgancio sia dal
-  fix d'inizio della corsa di decollo** (§2.2.1a). Se il punto più lontano
-  dallo sgancio non basta, si cerca il fix più lontano da entrambi.
+  fix d'inizio della corsa di decollo** (§2.2.1a).
 - La distanza dovrebbe essere volata senza la guida di un altro pilota
   (§2.2.1a, testo informativo): non è verificabile dalla traccia.
 - **Perdita di quota** fra punto di partenza e punto d'arrivo (§2.4.4): fino a
@@ -83,7 +83,7 @@ Presuppone l'insegna d'argento già conseguita.
 
 - Almeno **300 km**. Due strade:
   - **linea retta con partenza allo sgancio**: senza coordinate dichiarate
-    (§1.4.2d, §2.3), si misura fino al punto piu' lontano della traccia;
+    (§1.4.2d, §2.3), fino al fix d'arrivo con la distanza ufficiale migliore;
   - **percorso dichiarato prima del volo** (meta, fino a 3 punti di virata,
     andata e ritorno o triangolo): ogni punto dichiarato va effettivamente
     volato, un tema dichiarato correttamente ma non percorso non vale;

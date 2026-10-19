@@ -166,6 +166,14 @@ c'è il limite di perdita di quota.
 | --- | --- | --- | --- |
 | GK1 | Limite di perdita di quota secondo la distanza e la fonte di quota | §2.4.4 | ✅ |
 | GK2 | Perdita di quota = quota di partenza − quota d'arrivo | §1.3.4 | ✅ |
+| GK3 | Fix d'arrivo scelto dopo il volo col miglior esito ufficiale, non il più lontano | §1.2.10c, §2.4.4 | ✅ |
+
+**GK3 — Scelta del fix d'arrivo.** Il fix d'arrivo di una linea retta si sceglie dopo il
+volo (§1.2.10c). Il codice prendeva il fix più lontano e solo dopo applicava il §2.4.4:
+un Argento con planata finale bassa fuori campo veniva bocciato anche se un fix precedente,
+più alto, era valido. Ora `analysis.choose_finish_fix` scarta i fix che invalidano la prova
+e massimizza la distanza ufficiale (per l'Argento la minore fra questa e la distanza dal
+decollo).
 
 **GK1 — Perdita di quota.** Risolto: `validator._loss_of_height` applica il §2.4.4 sia
 alla linea retta sia al percorso dichiarato, scegliendo la regola sulla distanza volata. Il

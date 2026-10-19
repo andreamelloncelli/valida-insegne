@@ -3,10 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from flights import build_flight, climbing_profile, descending_profile
-from silverc.analysis import analyse
+from silverc.analysis import analyse, loss_of_height
 from silverc.igc import parse_igc
 from silverc.report import render
-from silverc.validator import Verdict, _loss_of_height, validate_silver
+from silverc.validator import Verdict, validate_silver
 
 FIVE_HOURS = 5 * 3600
 
@@ -109,7 +109,7 @@ def test_silver_distance_notes_flight_without_guidance(tmp_path):
     assert "guida di un altro pilota" in " ".join(req.method)
 
 
-def test_distance_fails_on_excessive_loss_of_height(tmp_path):
+def test_distance_fails_on_excessiveloss_of_height(tmp_path):
     # 60 km => perdita massima ammessa 600 m; qui si scendono 780 m.
     path = build_flight(
         tmp_path / "x.igc",
@@ -125,14 +125,14 @@ def test_distance_fails_on_excessive_loss_of_height(tmp_path):
 
 def test_loss_of_height_short_course_gnss_limit():
     # 60 km con quota GNSS: limite 600 - 100 = 500 m, 550 m invalidano.
-    check = _loss_of_height(60_000, 550, gnss=True)
+    check = loss_of_height(60_000, 550, gnss=True)
 
     assert check.limit_m == 500
     assert check.invalid is True
 
 
 def test_loss_of_height_short_course_barometric_limit():
-    check = _loss_of_height(60_000, 550, gnss=False)
+    check = loss_of_height(60_000, 550, gnss=False)
 
     assert check.limit_m == 600
     assert check.invalid is False
@@ -141,14 +141,14 @@ def test_loss_of_height_short_course_barometric_limit():
 
 def test_loss_of_height_long_course_shortens_distance():
     # 130 km con 1500 m di perdita: 500 m di eccesso tolgono 50 km.
-    check = _loss_of_height(130_000, 1500, gnss=False)
+    check = loss_of_height(130_000, 1500, gnss=False)
 
     assert check.invalid is False
     assert check.official_m == 80_000
 
 
 def test_loss_of_height_long_course_gnss_limit():
-    check = _loss_of_height(300_000, 1000, gnss=True)
+    check = loss_of_height(300_000, 1000, gnss=True)
 
     assert check.limit_m == 900
     assert check.official_m == 290_000
@@ -156,7 +156,7 @@ def test_loss_of_height_long_course_gnss_limit():
 
 def test_loss_of_height_at_100km_uses_the_ratio():
     # 100 km esatti sono ancora nella regola dell'1%: 1001 m invalidano.
-    check = _loss_of_height(100_000, 1001, gnss=False)
+    check = loss_of_height(100_000, 1001, gnss=False)
 
     assert check.limit_m == 1000
     assert check.invalid is True
@@ -165,14 +165,14 @@ def test_loss_of_height_at_100km_uses_the_ratio():
 def test_loss_of_height_rule_follows_flown_distance():
     # 101 km con 1500 m di perdita scendono a 51 km, ma restano nella regola
     # oltre i 100 km: nessuna invalidita', solo la riduzione.
-    check = _loss_of_height(101_000, 1500, gnss=False)
+    check = loss_of_height(101_000, 1500, gnss=False)
 
     assert check.invalid is False
     assert check.official_m == 51_000
 
 
 def test_loss_of_height_gain_is_not_penalised():
-    check = _loss_of_height(130_000, -200, gnss=False)
+    check = loss_of_height(130_000, -200, gnss=False)
 
     assert check.excess_m == 0
     assert check.official_m == 130_000
@@ -189,12 +189,12 @@ def test_long_silver_distance_is_shortened_not_invalidated(tmp_path):
     )
     flight = parse_igc(path)
     analysis = analyse(flight, calibrated=True)
-    analysis.loss_of_height_m = 1500.0
+    analysis.silver_finish.loss_of_height_m = 1500.0
     req = _by_code(validate_silver(flight, analysis), "distanza")
 
-    assert analysis.distance_m > 100_000
+    assert analysis.silver_finish.distance_m > 100_000
     assert req.verdict is Verdict.PASS
-    assert req.measured == f"{(analysis.distance_m - 50_000) / 1000:.2f} km"
+    assert req.measured == f"{(analysis.silver_finish.distance_m - 50_000) / 1000:.2f} km"
     assert "eccesso di 500 m" in " ".join(req.reasons)
 
 
@@ -217,25 +217,30 @@ def test_out_and_return_measures_the_farthest_point(tmp_path):
     assert req.verdict is Verdict.PASS
 
 
-def test_far_point_close_to_takeoff_airfield_fails(tmp_path):
-    # Punto piu' lontano oltre 50 km dallo sgancio ma vicino al campo di
-    # decollo: non e' una distanza valida.
-    path = build_flight(
-        tmp_path / "near.igc",
-        soaring_duration_s=7200,
-        distance_m=51_000,
-        altitude=descending_profile(top=800, bottom=700),
-    )
-    flight = parse_igc(path)
-    analysis = analyse(flight)
-    # Sposta artificialmente il decollo accanto al punto piu' lontano; nessun
-    # altro fix e' candidato.
-    analysis.distance_from_takeoff_m = 4_000.0
-    analysis.balanced_finish = None
-    req = _by_code(validate_silver(flight, analysis), "distanza")
+def test_earlier_higher_fix_beats_low_final_glide(tmp_path):
+    # Planata finale bassa: all'ultimo fix (~60 km) la perdita di quota supera
+    # il limite, ma un fix precedente a ~54 km e piu' alto dello sgancio e'
+    # valido. Il pilota sceglie il fix d'arrivo dopo il volo (§1.2.10c).
+    def profile(frac: float) -> int:
+        if frac < 0.05:
+            return int(800 - 2000 * frac)
+        if frac < 0.9:
+            return int(700 + 600 * (frac - 0.05) / 0.85)
+        return int(1300 - 11_500 * (frac - 0.9))
 
-    assert req.verdict is Verdict.FAIL
-    assert "corsa di decollo" in " ".join(req.reasons)
+    path = build_flight(
+        tmp_path / "low.igc",
+        soaring_duration_s=7200,
+        distance_m=63_000,
+        altitude=profile,
+    )
+    report = _report(path)
+    req = _by_code(report, "distanza")
+
+    assert report.analysis.loss_of_height_m > 500
+    assert req.verdict is Verdict.PASS
+    assert 50 < float(req.measured.split()[0]) < report.analysis.distance_m / 1000
+    assert "§1.2.10c" in " ".join(req.reasons)
 
 
 def test_distance_too_short(tmp_path):

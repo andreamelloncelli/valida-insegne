@@ -9,7 +9,7 @@ verificato e **perche'** e' stato accettato o rifiutato.
 | Requisito | Soglia | Come viene misurato |
 |-----------|--------|---------------------|
 | Durata | 5 h | Dallo sgancio all'atterraggio (i fix registrati da fermo a fine volo vengono scartati) |
-| Distanza | 50 km | Distanza geodetica dallo sgancio al **punto più lontano** della traccia (non l'atterraggio); dev'essere oltre 50 km sia dallo sgancio sia dal fix d'inizio della corsa di decollo (§2.2.1a), con perdita di quota entro i limiti del §2.4.4 (1% fino a 100 km, poi 1000 m con riduzione della distanza) |
+| Distanza | 50 km | Distanza geodetica dallo sgancio a un **fix d'arrivo** scelto fra quelli della traccia (§1.2.10c) col miglior esito ufficiale, non necessariamente il più lontano; dev'essere oltre 50 km sia dallo sgancio sia dal fix d'inizio della corsa di decollo (§2.2.1a), con perdita di quota entro i limiti del §2.4.4 (1% fino a 100 km, poi 1000 m con riduzione della distanza) |
 | Guadagno di quota | 1000 m | Massima differenza fra un punto alto e un punto basso **che lo precede**, entrambi dopo lo sgancio. Senza dati di taratura barometrica: quota GNSS e soglia +100 m (§2.4.6a) |
 
 ## Insegna d'oro (`--badge oro`)
@@ -17,7 +17,7 @@ verificato e **perche'** e' stato accettato o rifiutato.
 | Requisito | Soglia | Come viene misurato |
 |-----------|--------|---------------------|
 | Durata | 5 h | identica all'argento |
-| Distanza | 300 km | con dichiarazione (record C dell'IGC): somma delle tratte del **percorso dichiarato**, ogni punto toccato **nell'ordine dichiarato** entrando nella sua zona di osservazione (500 m sulle virate, 1 km su partenza e arrivo). Senza dichiarazione, o se il percorso dichiarato non e' completato: distanza in linea retta dallo sgancio al punto piu' lontano (§2.2) |
+| Distanza | 300 km | con dichiarazione (record C dell'IGC): somma delle tratte del **percorso dichiarato**, ogni punto toccato **nell'ordine dichiarato** entrando nella sua zona di osservazione (500 m sulle virate, 1 km su partenza e arrivo). Senza dichiarazione, o se il percorso dichiarato non e' completato: distanza in linea retta dallo sgancio al fix d'arrivo migliore (§2.2) |
 | Guadagno di quota | 3000 m | stesso criterio dell'argento |
 
 Se il file non contiene una dichiarazione, la distanza d'oro si valuta come

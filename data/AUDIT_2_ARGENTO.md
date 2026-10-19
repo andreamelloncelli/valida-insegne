@@ -26,8 +26,8 @@ all'atterraggio (§2.2.1a). La dichiarazione non richiede coordinate (§2.3).
 poi controlla che sia oltre 50 km anche dal decollo. Se quel fix non lo è, il volo è
 bocciato, ma un altro fix potrebbe soddisfare entrambe le condizioni. Il codice è
 **troppo severo**: va cercato un fix che massimizzi la minore delle due distanze.
-Risolto: `analysis.find_balanced_point` trova quel fix e `check_distance` lo usa quando il
-più lontano dallo sgancio non basta.
+Risolto: `analysis.choose_finish_fix` cerca quel fix tenendo conto anche della perdita di
+quota (vedi GK3 nell'Audit 1).
 
 **AK4 — Guida di un altro pilota.** Testo in corsivo, quindi informativo (§1.0.2), e non
 verificabile dalla traccia. Risolto con una nota nel metodo della prova di distanza, che

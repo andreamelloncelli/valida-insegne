@@ -81,7 +81,8 @@ class FlightAnalysis:
     recorder: RecorderInfo | None = None
     altitude_usable: bool = True
     calibrated: bool = False
-    balanced_finish: FinishFix | None = None
+    silver_finish: FinishFix | None = None
+    straight_finish: FinishFix | None = None
     median_fix_interval_s: float = 0.0
     gaps: list[tuple[Point, float]] = field(default_factory=list)
     intermediate_stops: list[tuple[Point, Point]] = field(default_factory=list)
@@ -226,22 +227,93 @@ def find_farthest_point(fixes: list[Fix], origin: Fix, start_index: int, end_ind
     return Point(best_index, fixes[best_index])
 
 
-def find_balanced_point(
-    fixes: list[Fix], release: Fix, takeoff: Fix, start_index: int, end_index: int
-) -> Point:
-    """Fix che massimizza la minore fra la distanza dallo sgancio e dal decollo.
+@dataclass(frozen=True)
+class LossOfHeight:
+    """Esito del limite di perdita di quota del §2.4.4 su una distanza."""
 
-    E' il miglior candidato per la distanza d'argento (§2.2.1a), che chiede
-    lo stesso fix d'arrivo lontano da entrambi: il fix piu' lontano dallo
-    sgancio puo' non esserlo abbastanza dal decollo.
+    flown_m: float
+    loss_m: float
+    limit_m: float
+    invalid: bool
+    official_m: float
+
+    @property
+    def excess_m(self) -> float:
+        return max(0.0, self.loss_m - self.limit_m)
+
+
+def loss_of_height(distance_m: float, loss_m: float, gnss: bool) -> LossOfHeight:
+    """Limite di perdita di quota del §2.4.4 e distanza che ne risulta."""
+    margin = RULES.gnss_altitude_penalty_m if gnss else 0.0
+    # La regola si sceglie sulla distanza volata, non su quella corretta: un
+    # volo di 130 km penalizzato a 80 km resta nella regola oltre i 100 km.
+    if distance_m <= RULES.loss_of_height_long_course_m:
+        limit = distance_m * RULES.loss_of_height_ratio - margin
+        return LossOfHeight(distance_m, loss_m, limit, loss_m > limit, distance_m)
+    limit = RULES.loss_of_height_long_limit_m - margin
+    penalty = RULES.loss_of_height_excess_factor * max(0.0, loss_m - limit)
+    return LossOfHeight(distance_m, loss_m, limit, False, distance_m - penalty)
+
+
+def choose_finish_fix(
+    fixes: list[Fix],
+    release: Point,
+    takeoff: Point,
+    end_index: int,
+    use_gnss: bool,
+    from_takeoff: bool,
+) -> Point:
+    """Fix d'arrivo scelto dopo il volo (§1.2.10c) col miglior esito ufficiale.
+
+    Il fix piu' lontano non e' sempre il migliore: una planata finale bassa
+    puo' superare il limite di perdita di quota, mentre un fix precedente piu'
+    alto lo rispetta. Si scarta ogni fix che invalida la prova (§2.4.4) e fra
+    gli altri si massimizza la distanza ufficiale o, con `from_takeoff`
+    (argento, §2.2.1a), la minore fra quella e la distanza dal decollo.
     """
-    best_index = start_index
-    best_distance = -1.0
-    for i in range(start_index, min(end_index + 1, len(fixes))):
-        distance = min(_fast_distance_m(release, fixes[i]), _fast_distance_m(takeoff, fixes[i]))
-        if distance > best_distance:
-            best_distance, best_index = distance, i
+    started = time.perf_counter()
+    release_alt = _altitude(release.fix, use_gnss)
+    best_key: tuple[bool, float] | None = None
+    best_index = release.index
+    for i in range(release.index, min(end_index + 1, len(fixes))):
+        alt = _altitude(fixes[i], use_gnss)
+        loss = float(release_alt - alt) if release_alt is not None and alt is not None else 0.0
+        check = loss_of_height(_fast_distance_m(release.fix, fixes[i]), loss, use_gnss)
+        metric = check.official_m
+        if from_takeoff:
+            metric = min(metric, _fast_distance_m(takeoff.fix, fixes[i]))
+        key = (not check.invalid, metric)
+        if best_key is None or key > best_key:
+            best_key, best_index = key, i
+    logger.debug(
+        "Scelta del fix d'arrivo: fix=%d-%d, gnss=%s, dal decollo=%s | %.1fms | "
+        "scelto indice %d, valido=%s, metrica=%.0fm",
+        release.index,
+        end_index,
+        use_gnss,
+        from_takeoff,
+        (time.perf_counter() - started) * 1000,
+        best_index,
+        best_key[0] if best_key else None,
+        best_key[1] if best_key else 0.0,
+    )
     return Point(best_index, fixes[best_index])
+
+
+def finish_fix(
+    point: Point, release: Point, takeoff: Point, use_gnss: bool
+) -> FinishFix:
+    """Distanze geodetiche e perdita di quota di un fix d'arrivo."""
+    release_alt = _altitude(release.fix, use_gnss)
+    alt = _altitude(point.fix, use_gnss)
+    return FinishFix(
+        point=point,
+        distance_m=geodesic_distance_m(release.fix, point.fix)[0],
+        from_takeoff_m=geodesic_distance_m(takeoff.fix, point.fix)[0],
+        loss_of_height_m=(
+            float(release_alt - alt) if release_alt is not None and alt is not None else 0.0
+        ),
+    )
 
 
 @dataclass
@@ -572,17 +644,17 @@ def analyse(
     far_alt = _altitude(farthest.fix, use_gnss_altitude)
     loss = float(release_alt - far_alt) if release_alt is not None and far_alt is not None else 0.0
 
-    balanced = find_balanced_point(fixes, release.fix, takeoff.fix, release.index, finish.index)
-    balanced_alt = _altitude(balanced.fix, use_gnss_altitude)
-    balanced_finish = FinishFix(
-        point=balanced,
-        distance_m=geodesic_distance_m(release.fix, balanced.fix)[0],
-        from_takeoff_m=geodesic_distance_m(takeoff.fix, balanced.fix)[0],
-        loss_of_height_m=(
-            float(release_alt - balanced_alt)
-            if release_alt is not None and balanced_alt is not None
-            else 0.0
-        ),
+    silver_finish = finish_fix(
+        choose_finish_fix(fixes, release, takeoff, finish.index, use_gnss_altitude, True),
+        release,
+        takeoff,
+        use_gnss_altitude,
+    )
+    straight_finish = finish_fix(
+        choose_finish_fix(fixes, release, takeoff, finish.index, use_gnss_altitude, False),
+        release,
+        takeoff,
+        use_gnss_altitude,
     )
 
     cadence = median_fix_interval_s(fixes, release.index, finish.index)
@@ -649,7 +721,8 @@ def analyse(
         recorder=recorder,
         altitude_usable=altitude_usable,
         calibrated=calibrated,
-        balanced_finish=balanced_finish,
+        silver_finish=silver_finish,
+        straight_finish=straight_finish,
     )
     logger.debug(
         "Analisi volo: fixes=%d, sgancio=%s (%s), atterraggio=%s | durata=%.0fs, "
