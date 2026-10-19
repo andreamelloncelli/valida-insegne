@@ -77,6 +77,78 @@ def _height_threshold(base: float, analysis: FlightAnalysis) -> tuple[float, str
     return base, None
 
 
+@dataclass(frozen=True)
+class _LossOfHeight:
+    flown_m: float
+    loss_m: float
+    limit_m: float
+    invalid: bool
+    official_m: float
+
+    @property
+    def excess_m(self) -> float:
+        return max(0.0, self.loss_m - self.limit_m)
+
+
+def _loss_of_height(distance_m: float, loss_m: float, gnss: bool) -> _LossOfHeight:
+    """Limite di perdita di quota del §2.4.4 e distanza che ne risulta."""
+    margin = RULES.gnss_altitude_penalty_m if gnss else 0.0
+    # La regola si sceglie sulla distanza volata, non su quella corretta: un
+    # volo di 130 km penalizzato a 80 km resta nella regola oltre i 100 km.
+    if distance_m <= RULES.loss_of_height_long_course_m:
+        limit = distance_m * RULES.loss_of_height_ratio - margin
+        return _LossOfHeight(distance_m, loss_m, limit, loss_m > limit, distance_m)
+    limit = RULES.loss_of_height_long_limit_m - margin
+    penalty = RULES.loss_of_height_excess_factor * max(0.0, loss_m - limit)
+    return _LossOfHeight(distance_m, loss_m, limit, False, distance_m - penalty)
+
+
+def _loss_of_height_method(gnss: bool) -> str:
+    margin = f" meno {RULES.gnss_altitude_penalty_m:.0f} m (quota GNSS)" if gnss else ""
+    long_limit = RULES.loss_of_height_long_limit_m - (
+        RULES.gnss_altitude_penalty_m if gnss else 0.0
+    )
+    return (
+        f"Perdita di quota ammessa (§2.4.4): fino a "
+        f"{RULES.loss_of_height_long_course_m / 1000:.0f} km "
+        f"{RULES.loss_of_height_ratio:.0%} della distanza{margin}, oltre il quale la "
+        f"prova non e' valida; oltre i {RULES.loss_of_height_long_course_m / 1000:.0f} km "
+        f"{long_limit:.0f} m, e ogni metro in eccesso toglie "
+        f"{RULES.loss_of_height_excess_factor:.0f} m alla distanza."
+    )
+
+
+def _loss_of_height_reason(check: _LossOfHeight) -> str:
+    if check.invalid:
+        return (
+            f"Perdita di quota fra partenza e arrivo di {check.loss_m:.0f} m, oltre il "
+            f"limite di {check.limit_m:.0f} m: fino a "
+            f"{RULES.loss_of_height_long_course_m / 1000:.0f} km la prova non e' valida "
+            "(§2.4.4)."
+        )
+    if check.excess_m > 0:
+        return (
+            f"Perdita di quota fra partenza e arrivo di {check.loss_m:.0f} m, oltre il "
+            f"limite di {check.limit_m:.0f} m: l'eccesso di {check.excess_m:.0f} m "
+            f"toglie {(check.flown_m - check.official_m) / 1000:.2f} km, la distanza "
+            f"passa da {check.flown_m / 1000:.2f} a {check.official_m / 1000:.2f} km "
+            "(§2.4.4)."
+        )
+    if check.loss_m < 0:
+        return (
+            f"Nessuna perdita di quota: l'arrivo e' {-check.loss_m:.0f} m piu' alto "
+            f"della partenza (limite: {check.limit_m:.0f} m)."
+        )
+    return (
+        f"Perdita di quota di {check.loss_m:.0f} m, entro il limite di "
+        f"{check.limit_m:.0f} m."
+    )
+
+
+def _uses_gnss(analysis: FlightAnalysis) -> bool:
+    return analysis.altitude_source.startswith("GNSS")
+
+
 def _fmt_hms(seconds: float) -> str:
     total = int(seconds)
     return f"{total // 3600:d}h {total % 3600 // 60:02d}m {total % 60:02d}s"
@@ -160,19 +232,20 @@ def check_height_gain(analysis: FlightAnalysis, rules: BadgeRules = SILVER) -> R
 
 
 def check_distance(analysis: FlightAnalysis, rules: BadgeRules = SILVER) -> Requirement:
-    distance = analysis.distance_m
+    gnss = _uses_gnss(analysis)
+    loss = _loss_of_height(analysis.distance_m, analysis.loss_of_height_m, gnss)
+    distance = loss.official_m
     # Banda dovuta al modello geodetico (sfera FAI vs ellissoide WGS84).
     verdict = _threshold_verdict(
         distance, rules.min_distance_m, band=rules.min_distance_m * RULES.marginal_ratio
     )
-    max_loss = distance * RULES.max_loss_of_height_ratio
     from_takeoff = analysis.distance_from_takeoff_m
     method = [
         "Punto d'arrivo: il fix piu' lontano dallo sgancio fra tutti quelli "
         "della traccia (non l'atterraggio).",
         "Distanza in linea retta dal punto di sgancio a quel punto.",
         f"Modello geodetico: {analysis.geodesic_model}.",
-        f"Perdita di quota ammessa: {RULES.max_loss_of_height_ratio:.0%} della distanza.",
+        _loss_of_height_method(gnss),
     ]
     if rules.requires_distance_from_takeoff:
         method.insert(
@@ -182,7 +255,7 @@ def check_distance(analysis: FlightAnalysis, rules: BadgeRules = SILVER) -> Requ
         )
     reasons = [
         f"Punto piu' lontano raggiunto alle {analysis.farthest.time:%H:%M:%S} UTC: "
-        f"{distance / 1000:.2f} km dallo sgancio contro i "
+        f"{analysis.distance_m / 1000:.2f} km dallo sgancio contro i "
         f"{rules.min_distance_m / 1000:.0f} km richiesti."
     ]
     if rules.accepts_declared_task:
@@ -204,22 +277,9 @@ def check_distance(analysis: FlightAnalysis, rules: BadgeRules = SILVER) -> Requ
                 f"Distanza dall'aeroporto di decollo: {from_takeoff / 1000:.2f} km, "
                 "anch'essa oltre la soglia."
             )
-    if analysis.loss_of_height_m > max_loss:
+    if loss.invalid:
         verdict = Verdict.FAIL
-        reasons.append(
-            f"Perdita di quota fra partenza e arrivo di {analysis.loss_of_height_m:.0f} m, "
-            f"oltre il limite di {max_loss:.0f} m: il volo non e' omologabile come distanza."
-        )
-    elif analysis.loss_of_height_m < 0:
-        reasons.append(
-            f"Nessuna perdita di quota: l'arrivo e' {-analysis.loss_of_height_m:.0f} m "
-            f"piu' alto della partenza (limite: {max_loss:.0f} m)."
-        )
-    else:
-        reasons.append(
-            f"Perdita di quota di {analysis.loss_of_height_m:.0f} m, entro il limite "
-            f"di {max_loss:.0f} m."
-        )
+    reasons.append(_loss_of_height_reason(loss))
     return Requirement(
         code="distanza",
         title=f"Distanza: {rules.min_distance_m / 1000:.0f} km, punto piu' lontano",
@@ -240,7 +300,7 @@ def check_declared_distance(analysis: FlightAnalysis, rules: BadgeRules = GOLD) 
         "(partenza, virate, arrivo).",
         "Ogni punto dev'essere toccato nell'ordine dichiarato, entrando nella "
         "sua zona di osservazione.",
-        f"Perdita di quota ammessa: {RULES.max_loss_of_height_ratio:.0%} della distanza.",
+        _loss_of_height_method(_uses_gnss(analysis)),
     ]
     check = analysis.task_check
 
@@ -258,12 +318,18 @@ def check_declared_distance(analysis: FlightAnalysis, rules: BadgeRules = GOLD) 
             method=method,
         )
 
-    distance = check.distance_m
+    # La perdita di quota si misura solo fra partenza e arrivo raggiunti.
+    loss = (
+        _loss_of_height(check.distance_m, check.loss_of_height_m, _uses_gnss(analysis))
+        if check.completed
+        else None
+    )
+    distance = loss.official_m if loss is not None else check.distance_m
     verdict = _threshold_verdict(
         distance, rules.min_distance_m, band=rules.min_distance_m * RULES.marginal_ratio
     )
     reasons = [
-        f"Percorso dichiarato di {distance / 1000:.2f} km su "
+        f"Percorso dichiarato di {check.distance_m / 1000:.2f} km su "
         f"{len(check.task.turnpoints)} punti di virata, contro i "
         f"{required_km:.0f} km richiesti."
     ]
@@ -296,13 +362,10 @@ def check_declared_distance(analysis: FlightAnalysis, rules: BadgeRules = GOLD) 
                 f"una zona di {waypoint.radius_m:.0f} m."
             )
 
-    max_loss = distance * RULES.max_loss_of_height_ratio
-    if check.completed and check.loss_of_height_m > max_loss:
-        verdict = Verdict.FAIL
-        reasons.append(
-            f"Perdita di quota fra partenza e arrivo di {check.loss_of_height_m:.0f} m, "
-            f"oltre il limite di {max_loss:.0f} m."
-        )
+    if loss is not None:
+        if loss.invalid:
+            verdict = Verdict.FAIL
+        reasons.append(_loss_of_height_reason(loss))
 
     return Requirement(
         code="distanza",

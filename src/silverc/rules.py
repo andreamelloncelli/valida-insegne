@@ -41,16 +41,20 @@ class BadgeRules:
     # Numero massimo di punti di virata ammessi nella dichiarazione. - TO VERIFY
     max_turnpoints: int = 3
 
-    # SC3 - perdita di quota massima ammessa fra punto di partenza e di
-    # arrivo: 1% della distanza percorsa. - TO VERIFY (verificare se
-    # l'edizione in vigore applica un tetto massimo alla percentuale)
-    max_loss_of_height_ratio: float = 0.01
+    # SC3 §2.4.4 - perdita di quota fra partenza e arrivo. Fino a 100 km di
+    # distanza il limite e' l'1% e superarlo invalida la prova; oltre i 100 km
+    # il limite e' fisso e l'eccesso non invalida ma accorcia la distanza di
+    # 100 volte tanto. Con la quota GNSS entrambi i limiti scendono di
+    # `gnss_altitude_penalty_m`.
+    loss_of_height_ratio: float = 0.01
+    loss_of_height_long_course_m: float = 100_000.0
+    loss_of_height_long_limit_m: float = 1_000.0
+    loss_of_height_excess_factor: float = 100.0
 
-    # Maggiorazione della soglia di guadagno di quota quando si usa la quota
-    # GNSS: obbligatoria con un Position Recorder (art. 9.1 ammette i PR per
-    # Argento e Oro), non dovuta con un Flight Recorder approvato. Regola
-    # riferita da Maurizio; non compare nel Regolamento
-    # Insegne AeCI 2025. - TO VERIFY sul Sporting Code Sect. 3
+    # Margine sulla quota GNSS (SC3 §2.4.3c, §2.4.4): si aggiunge alla soglia
+    # di guadagno di quota e si toglie dai limiti di perdita di quota.
+    # Obbligatorio con un Position Recorder, non dovuto con un Flight Recorder
+    # approvato.
     gnss_altitude_penalty_m: float = 100.0
 
     # Non regolamentare: soglia oltre la quale il verdetto e' MARGINAL perche'

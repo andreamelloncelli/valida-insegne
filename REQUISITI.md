@@ -49,8 +49,11 @@ confidenza.
   raggiunto in volo.
 - Il punto più lontano deve distare oltre 50 km **sia dallo sgancio sia
   dall'aeroporto di decollo**.
-- **Perdita di quota** fra punto di partenza e punto d'arrivo non superiore
-  all'**1% della distanza** (500 m su 50 km). Superarla invalida la prova.
+- **Perdita di quota** fra punto di partenza e punto d'arrivo (§2.4.4): fino a
+  100 km non oltre l'**1% della distanza** (500 m su 50 km), altrimenti la
+  prova non è valida; oltre i 100 km il limite è **1000 m** e ogni metro in
+  eccesso toglie 100 m alla distanza. Con la quota GNSS entrambi i limiti
+  scendono di 100 m.
 
 ### 3. Guadagno di quota — 1000 m
 
@@ -79,8 +82,9 @@ Presuppone l'insegna d'argento già conseguita.
   - **percorso dichiarato prima del volo** (meta, fino a 3 punti di virata,
     andata e ritorno o triangolo): ogni punto dichiarato va effettivamente
     volato, un tema dichiarato correttamente ma non percorso non vale.
-- **Perdita di quota** non superiore all'**1% della distanza** (3000 m su
-  300 km).
+- **Perdita di quota** oltre i 100 km (§2.4.4): limite di **1000 m** (900 m
+  con quota GNSS); ogni metro in eccesso toglie 100 m alla distanza. 2000 m di
+  perdita su 300 km lasciano 200 km.
 
 ### 3. Guadagno di quota — 3000 m
 

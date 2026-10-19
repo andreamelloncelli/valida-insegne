@@ -117,9 +117,9 @@ def test_position_recorder_without_gnss_altitude_is_undetermined(tmp_path):
     assert req.verdict is Verdict.UNDETERMINED
 
 
-def test_loss_of_height_limit_has_no_gnss_deduction(tmp_path):
-    # Con un PR la quota e' GNSS, ma il limite di perdita resta l'1% della
-    # distanza: la maggiorazione di 100 m riguarda solo il guadagno di quota.
+def test_loss_of_height_limit_has_gnss_deduction(tmp_path):
+    # Con un PR la quota e' GNSS: il §2.4.4 riduce di 100 m anche il limite di
+    # perdita di quota, fino a 100 km pari all'1% della distanza.
     path = build_flight(
         tmp_path / "d.igc",
         soaring_duration_s=3 * 3600,
@@ -130,7 +130,7 @@ def test_loss_of_height_limit_has_no_gnss_deduction(tmp_path):
     flight = parse_igc(path)
     report = validate_silver(flight, analyse(flight))
     req = next(r for r in report.requirements if r.code == "distanza")
-    expected = round(report.analysis.distance_m * 0.01)
+    expected = round(report.analysis.distance_m * 0.01 - 100)
 
     assert report.analysis.altitude_source == "GNSS"
     assert f"limite di {expected} m" in " ".join(req.reasons)

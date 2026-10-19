@@ -4,7 +4,7 @@ from flights import build_flight, climbing_profile, descending_profile
 from silverc.analysis import analyse
 from silverc.igc import parse_igc
 from silverc.report import render
-from silverc.validator import Verdict, validate_silver
+from silverc.validator import Verdict, _loss_of_height, validate_silver
 
 FIVE_HOURS = 5 * 3600
 
@@ -107,6 +107,81 @@ def test_distance_fails_on_excessive_loss_of_height(tmp_path):
 
     assert req.verdict is Verdict.FAIL
     assert "oltre il limite" in " ".join(req.reasons)
+
+
+def test_loss_of_height_short_course_gnss_limit():
+    # 60 km con quota GNSS: limite 600 - 100 = 500 m, 550 m invalidano.
+    check = _loss_of_height(60_000, 550, gnss=True)
+
+    assert check.limit_m == 500
+    assert check.invalid is True
+
+
+def test_loss_of_height_short_course_barometric_limit():
+    check = _loss_of_height(60_000, 550, gnss=False)
+
+    assert check.limit_m == 600
+    assert check.invalid is False
+    assert check.official_m == 60_000
+
+
+def test_loss_of_height_long_course_shortens_distance():
+    # 130 km con 1500 m di perdita: 500 m di eccesso tolgono 50 km.
+    check = _loss_of_height(130_000, 1500, gnss=False)
+
+    assert check.invalid is False
+    assert check.official_m == 80_000
+
+
+def test_loss_of_height_long_course_gnss_limit():
+    check = _loss_of_height(300_000, 1000, gnss=True)
+
+    assert check.limit_m == 900
+    assert check.official_m == 290_000
+
+
+def test_loss_of_height_at_100km_uses_the_ratio():
+    # 100 km esatti sono ancora nella regola dell'1%: 1001 m invalidano.
+    check = _loss_of_height(100_000, 1001, gnss=False)
+
+    assert check.limit_m == 1000
+    assert check.invalid is True
+
+
+def test_loss_of_height_rule_follows_flown_distance():
+    # 101 km con 1500 m di perdita scendono a 51 km, ma restano nella regola
+    # oltre i 100 km: nessuna invalidita', solo la riduzione.
+    check = _loss_of_height(101_000, 1500, gnss=False)
+
+    assert check.invalid is False
+    assert check.official_m == 51_000
+
+
+def test_loss_of_height_gain_is_not_penalised():
+    check = _loss_of_height(130_000, -200, gnss=False)
+
+    assert check.excess_m == 0
+    assert check.official_m == 130_000
+
+
+def test_long_silver_distance_is_shortened_not_invalidated(tmp_path):
+    # 130 km con 1500 m di perdita: con l'1% sarebbe bocciato, per il §2.4.4
+    # valgono 80 km, oltre i 50 richiesti.
+    path = build_flight(
+        tmp_path / "x.igc",
+        soaring_duration_s=7200,
+        distance_m=130_000,
+        altitude=descending_profile(top=800, bottom=500),
+    )
+    flight = parse_igc(path)
+    analysis = analyse(flight)
+    analysis.loss_of_height_m = 1500.0
+    req = _by_code(validate_silver(flight, analysis), "distanza")
+
+    assert analysis.distance_m > 100_000
+    assert req.verdict is Verdict.PASS
+    assert req.measured == f"{(analysis.distance_m - 50_000) / 1000:.2f} km"
+    assert "eccesso di 500 m" in " ".join(req.reasons)
 
 
 def test_out_and_return_measures_the_farthest_point(tmp_path):

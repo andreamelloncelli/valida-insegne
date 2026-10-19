@@ -56,7 +56,8 @@ quota GNSS con margine **solo** per i PR (`analysis.py:367`):
 - PR con quota barometrica tarata: il codice impone GNSS e margine, ed è **troppo severo**.
 
 Serve un'indicazione dell'utente («taratura disponibile sì/no»). Il margine vale anche
-per il limite di perdita di quota della distanza (§2.4.4), che oggi lo ignora: vedi GK1.
+per il limite di perdita di quota della distanza (§2.4.4), applicato da GK1 con la stessa
+condizione sulla quota GNSS.
 
 **GT3 — Correzione di taratura.** Con taratura disponibile, la quota barometrica va
 corretta con la curva quando è determinante (§2.4.3a). Il codice usa la quota ISA grezza.
@@ -145,18 +146,20 @@ c'è il limite di perdita di quota.
 
 | # | Tema | SC3 | Stato |
 | --- | --- | --- | --- |
-| GK1 | Limite di perdita di quota secondo la distanza e la fonte di quota | §2.4.4 | ❌ |
+| GK1 | Limite di perdita di quota secondo la distanza e la fonte di quota | §2.4.4 | ✅ |
 | GK2 | Perdita di quota = quota di partenza − quota d'arrivo | §1.3.4 | ✅ |
 
-**GK1 — Perdita di quota.** Il codice usa sempre l'1% della distanza e boccia se
-superato. Il §2.4.4 prevede:
+**GK1 — Perdita di quota.** Risolto: `validator._loss_of_height` applica il §2.4.4 sia
+alla linea retta sia al percorso dichiarato, scegliendo la regola sulla distanza volata. Il
+verdetto si dà sulla distanza ridotta. Prima il codice usava sempre l'1% della distanza e
+bocciava se superato. Il §2.4.4 prevede:
 
 | Distanza | Quota barometrica | Quota GNSS | Se superato |
 | --- | --- | --- | --- |
 | ≤ 100 km | 1% della distanza | 1% della distanza − 100 m | prova non valida |
 | > 100 km | 1000 m | 900 m | distanza − 100 × eccesso |
 
-Il codice sbaglia in più direzioni:
+Il codice sbagliava in più direzioni (casi ora coperti da test):
 
 - con quota GNSS non toglie i 100 m, quindi è troppo permissivo.
   > Argento, 60 km con 550 m di perdita in GNSS. Codice: entro i 600 m ⇒ **SODDISFATTO**.
@@ -167,8 +170,6 @@ Il codice sbaglia in più direzioni:
 - sull'Oro è troppo permissivo.
   > 300 km con 2000 m di perdita. Codice: entro i 3000 m ⇒ **SODDISFATTO**.
   > SC3: 1000 m di eccesso ⇒ −100 km ⇒ 200 km validi ⇒ **NON SODDISFATTO**.
-
-Fix locale in `check_distance` e `check_declared_distance`. È la voce più urgente.
 
 ## Fuori ambito
 

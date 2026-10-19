@@ -9,7 +9,7 @@ verificato e **perche'** e' stato accettato o rifiutato.
 | Requisito | Soglia | Come viene misurato |
 |-----------|--------|---------------------|
 | Durata | 5 h | Dallo sgancio all'atterraggio (i fix registrati da fermo a fine volo vengono scartati) |
-| Distanza | 50 km | Distanza geodetica dallo sgancio al **punto più lontano** della traccia (non l'atterraggio); dev'essere oltre 50 km sia dallo sgancio sia dall'aeroporto di decollo, con perdita di quota ≤ 1% |
+| Distanza | 50 km | Distanza geodetica dallo sgancio al **punto più lontano** della traccia (non l'atterraggio); dev'essere oltre 50 km sia dallo sgancio sia dall'aeroporto di decollo, con perdita di quota entro i limiti del §2.4.4 (1% fino a 100 km, poi 1000 m con riduzione della distanza) |
 | Guadagno di quota | 1000 m | Massima differenza fra un punto alto e un punto basso **che lo precede**, entrambi dopo lo sgancio. Con un Position Recorder: quota GNSS e soglia +100 m |
 
 ## Insegna d'oro (`--badge oro`)

@@ -110,6 +110,21 @@ def test_completed_300km_task_passes(tmp_path):
     assert "VIRATA EST" in " ".join(req.reasons)
 
 
+def test_long_loss_of_height_shortens_declared_distance(tmp_path):
+    # 320 km con 2000 m di perdita: con l'1% sarebbe entro i 3200 m, per il
+    # §2.4.4 1000 m di eccesso tolgono 100 km e restano ~220 km.
+    path = build_gold_flight(tmp_path / "g.igc", legs=_OUT_AND_RETURN, declared=_DECLARED)
+    flight = parse_igc(path)
+    analysis = analyse(flight)
+    analysis.task_check.loss_of_height_m = 2000.0
+    report = validate_badge(flight, analysis, GOLD)
+    req = next(r for r in report.requirements if r.code == "distanza")
+
+    assert req.verdict is Verdict.FAIL
+    assert 218 < float(req.measured.split()[0]) < 222
+    assert "eccesso di 1000 m" in " ".join(req.reasons)
+
+
 def test_missed_turnpoint_fails(tmp_path):
     # Il volo si ferma a 150 km: la virata dichiarata a 160 km non viene toccata.
     short = [(3000.0, 0.0), (0.0, 0.0), (150_000.0, 0.0), (0.0, 0.0)]
