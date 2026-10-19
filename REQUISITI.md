@@ -85,11 +85,14 @@ Presuppone l'insegna d'argento già conseguita.
   - **linea retta con partenza allo sgancio**: senza coordinate dichiarate
     (§1.4.2d, §2.3), fino al fix d'arrivo con la distanza ufficiale migliore;
   - **percorso dichiarato prima del volo** (meta, fino a 3 punti di virata,
-    andata e ritorno o triangolo): ogni punto dichiarato va effettivamente
-    volato, un tema dichiarato correttamente ma non percorso non vale;
-  - un volo che non completa il percorso dichiarato vale comunque come linea
-    retta dallo sgancio, se ne soddisfa i requisiti (§2.2). Le distanze libere
-    (§1.4.2i–l) valgono solo per i record.
+    andata e ritorno o triangolo): i punti rivendicati vanno effettivamente
+    volati, un tema dichiarato ma non percorso non vale;
+  - con 1-3 virate dichiarate il volo vale anche come **distanza fino a 3
+    virate** (§1.4.2f): virate in qualsiasi ordine, anche solo alcune delle
+    dichiarate, partenza dichiarata o sgancio, arrivo dichiarato o un fix.
+    Per un'insegna non è mai inferiore ad andata e ritorno o triangolo;
+  - vale la geometria con l'esito migliore, linea retta compresa (§2.2). Le
+    distanze libere (§1.4.2i–l) valgono solo per i record.
 - **Perdita di quota** oltre i 100 km (§2.4.4): limite di **1000 m** (900 m
   con quota GNSS); ogni metro in eccesso toglie 100 m alla distanza. 2000 m di
   perdita su 300 km lasciano 200 km.

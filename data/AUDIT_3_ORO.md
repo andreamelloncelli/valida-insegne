@@ -30,14 +30,14 @@ percorsi chiusi hanno partenza e arrivo con coordinate identiche (§1.2.11).
 | OK1 | Linea retta dallo sgancio senza coordinate dichiarate | §1.4.2d, §2.3 | ✅ |
 | OK2 | Riconoscimento del tipo di percorso | §1.4.2d–h | ✅ |
 | OK3 | Al massimo 3 virate | §1.4.4 | ✅ |
-| OK4 | Ordine libero delle virate solo nel percorso (f) | §1.4.2f | ❌ |
-| OK5 | Partenze e arrivi ammessi secondo il percorso | §1.4.4 | ❌ |
+| OK4 | Ordine libero delle virate solo nel percorso (f) | §1.4.2f | ✅ |
+| OK5 | Partenze e arrivi ammessi secondo il percorso | §1.4.4 | ✅ |
 | OK6 | Linee di partenza e d'arrivo da 1 km perpendicolari alla tratta | §1.2.12, §1.3.1a, §1.3.2b | ❌ |
 | OK7 | Quota al passaggio della linea interpolata fra i due fix | §2.4.3b | ❌ |
 | OK8 | Zone di virata: cilindro da 500 m **o** settore a 90° di raggio illimitato | §1.2.6 | 🟡 |
 | OK9 | −1 km per ogni virata raggiunta solo col cilindro | §1.3.6 | ❌ |
 | OK10 | Virata raggiunta anche se il segmento fra due fix attraversa la zona | §2.4.2c | ❌ |
-| OK11 | Distanza ufficiale = percorso − correzioni zona − penalità di quota | §1.3.7 | ❌ |
+| OK11 | Distanza ufficiale = percorso − correzioni zona − penalità di quota | §1.3.7 | 🟡 |
 | OK12 | Percorso chiuso: partenza e arrivo con le stesse coordinate | §1.2.11 | ✅ |
 | OK13 | Percorso dichiarato non completato: ripiego sulla linea retta | §2.2, §1.4.4 | ✅ |
 | OK14 | Sgancio prima della partenza, indicato nel report | Maurizio | ✅ |
@@ -51,6 +51,19 @@ report indica il tipo di percorso riconosciuto.
 **OK4 — Ordine delle virate.** Solo nel percorso (f) le virate si girano in qualsiasi
 ordine. Oggi il codice esige sempre l'ordine dichiarato, e
 `test_turnpoints_must_be_in_declared_order` lo codifica.
+
+**OK4 + OK5 — Risolti in `course.verify_declared_task`.** Ogni percorso dichiarato con 1–3
+virate si valuta, oltre che nella geometria dichiarata, come distanza fino a 3 virate (f):
+virate in qualsiasi ordine, partenza dichiarata o sgancio, arrivo dichiarato o un fix
+(tabella §1.4.4). Vale l'esito migliore (§2.2). Per un'insegna non servono valutatori a
+parte per andata e ritorno (g) e triangolo (h): richiedono linee di partenza e arrivo e
+l'ordine dichiarato, mentre (f) ammette tutto questo e altro, quindi sullo stesso volo la
+sua distanza non è mai inferiore (per il triangolo a 3 virate per la disuguaglianza
+triangolare). L'ordine dichiarato di g e h conta solo per i diamanti, fuori ambito. Si
+ammette anche di rivendicare solo alcune delle virate dichiarate («via one, two, or three
+declared turn points», colonne «declared» e «claimed» della tabella §1.4.4): è
+un'interpretazione e il report lo dice. Il test sull'ordine è stato invertito
+(`test_turnpoints_in_any_order_count_as_three_tp_distance`).
 
 **OK5 — Partenze e arrivi.** Lo sgancio come partenza è ammesso solo per (d) e (f);
 l'atterraggio come arrivo solo per (f). Meta, andata e ritorno e triangolo esigono le
@@ -77,7 +90,8 @@ illimitato.
 radi un passaggio reale può risultare mancato: il codice è troppo severo.
 
 **OK11 — Distanza ufficiale.** Somma la correzione delle zone (OK9) e la penalità di
-perdita di quota (GK1) sul percorso dichiarato.
+perdita di quota (GK1) sul percorso dichiarato. La geometria si sceglie già sulla distanza
+ufficiale con la penalità di quota; manca la correzione delle zone, che arriva con OK9.
 
 **OK12 — Percorso chiuso.** Risolto: un percorso è chiuso solo se partenza e arrivo hanno
 le stesse coordinate (`course.is_closed`); se distano meno di 1 km ma non coincidono il

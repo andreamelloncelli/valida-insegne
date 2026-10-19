@@ -303,10 +303,17 @@ def check_declared_distance(analysis: FlightAnalysis, rules: BadgeRules = GOLD) 
     required_km = rules.min_distance_m / 1000
     method = [
         "Percorso dichiarato letto dai record C del file IGC.",
-        "Distanza calcolata sommando le tratte fra i punti dichiarati "
-        "(partenza, virate, arrivo).",
-        "Ogni punto dev'essere toccato nell'ordine dichiarato, entrando nella "
-        "sua zona di osservazione; la partenza si cerca dopo lo sgancio.",
+        "Geometria dichiarata: ogni punto toccato nell'ordine dichiarato, entrando "
+        "nella sua zona di osservazione; la partenza si cerca dopo lo sgancio. Nel "
+        "triangolo a 3 virate contano solo i lati fra le virate (§1.4.2h).",
+        "Con 1-3 virate il volo si valuta anche come distanza fino a 3 virate "
+        "(§1.4.2f): virate in qualsiasi ordine, anche solo alcune delle dichiarate, "
+        "partenza dichiarata o sgancio, arrivo dichiarato o un fix scelto dopo il "
+        "volo (tabella §1.4.4). Vale la geometria con la distanza ufficiale "
+        "migliore (§2.2); per un'insegna non e' mai inferiore ad andata e ritorno "
+        "o triangolo sullo stesso volo.",
+        "Distanza ufficiale: tratte fra i punti rivendicati, meno la correzione "
+        "per la perdita di quota (§1.3.7).",
         _loss_of_height_method(_uses_gnss(analysis)),
     ]
     check = analysis.task_check
@@ -336,11 +343,19 @@ def check_declared_distance(analysis: FlightAnalysis, rules: BadgeRules = GOLD) 
         distance, rules.min_distance_m, band=rules.min_distance_m * RULES.marginal_ratio
     )
     reasons = [
-        f"Percorso dichiarato di {check.distance_m / 1000:.2f} km su "
-        f"{len(check.task.turnpoints)} punti di virata, contro i "
+        f"Percorso di {check.distance_m / 1000:.2f} km su "
+        f"{len(check.waypoints) - 2} punti di virata, contro i "
         f"{required_km:.0f} km richiesti.",
-        f"Tipo di percorso: {check.course.value}.",
+        f"Percorso dichiarato: {check.declared_course.value}; geometria valutata: "
+        f"{check.course.value}.",
     ]
+    if check.unused:
+        reasons.append(
+            "Virate dichiarate non usate: "
+            + ", ".join(f"'{w.name}'" for w in check.unused)
+            + ". Lo SC3 ammette di rivendicare una, due o tre delle virate "
+            "dichiarate (§1.4.2f): e' un'interpretazione, da confermare con l'OO."
+        )
     start_finish_m = geodesic_distance_ll(
         check.task.start.lat, check.task.start.lon, check.task.finish.lat, check.task.finish.lon
     )

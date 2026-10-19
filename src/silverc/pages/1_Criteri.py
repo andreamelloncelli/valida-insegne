@@ -96,9 +96,11 @@ Presuppone l'insegna d'argento già conseguita.
   percorso **dichiarato prima del volo**, con un
   massimo di 3 punti di virata (linea retta, andata e ritorno o
   triangolo).
-- Ogni punto dichiarato va effettivamente volato: un tema dichiarato
-  correttamente ma non percorso non vale. Il volo vale comunque come
-  linea retta dallo sgancio, se ne soddisfa i requisiti (§2.2).
+- I punti rivendicati vanno effettivamente volati: un tema dichiarato ma
+  non percorso non vale. Con 1-3 virate il volo vale anche come distanza
+  fino a 3 virate (§1.4.2f): virate in qualsiasi ordine, anche solo alcune,
+  partenza dichiarata o sgancio, arrivo dichiarato o un fix. Vale la
+  geometria con l'esito migliore, linea retta compresa (§2.2).
 - **Perdita di quota** oltre i 100 km (§2.4.4): limite di **1000 m**
   (900 m con quota GNSS); ogni metro in eccesso toglie 100 m alla
   distanza. 2000 m di perdita su 300 km lasciano 200 km.

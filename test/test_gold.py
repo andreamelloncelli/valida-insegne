@@ -6,6 +6,7 @@ import math
 
 from igc_builder import IGCBuilder, offset_lat, offset_lon
 from silverc.analysis import analyse
+from silverc.course import CourseType
 from silverc.igc import parse_igc
 from silverc.rules import GOLD
 from silverc.report import render
@@ -162,16 +163,30 @@ def test_missed_turnpoint_fails(tmp_path):
 
 
 def test_declared_task_not_flown_is_not_accepted(tmp_path):
-    # Dichiarazione corretta e oltre i 300 km, ma la traccia non torna
-    # all'arrivo: la dichiarazione da sola non basta.
+    # Dichiarazione oltre i 300 km, ma la traccia non torna all'arrivo: la
+    # dichiarazione da sola non basta. Come distanza fino a 3 virate (§1.4.2f)
+    # valgono solo i ~220 km volati fino all'ultimo fix utile.
     no_return = [(3000.0, 0.0), (0.0, 0.0), (165_000.0, 0.0), (100_000.0, 0.0)]
     path = build_gold_flight(tmp_path / "g.igc", legs=no_return, declared=_DECLARED)
     req, report = _requirement(path)
 
-    assert report.analysis.task_check.distance_m > GOLD.min_distance_m
     assert req.verdict is Verdict.FAIL
-    assert [w.label for w in report.analysis.task_check.missed] == ["Arrivo"]
-    assert "effettivamente volato" in " ".join(req.reasons)
+    assert report.analysis.task_check.course is CourseType.THREE_TP
+    assert report.analysis.task_check.distance_m < GOLD.min_distance_m
+
+
+def test_out_and_return_landed_short_counts_as_three_tp_distance(tmp_path):
+    # Andata e ritorno da 320 km atterrato 15 km prima di casa: come distanza
+    # fino a 3 virate con arrivo a un fix (§1.4.2f, tabella §1.4.4) fa ~302 km.
+    short_return = [(3000.0, 0.0), (0.0, 0.0), (160_000.0, 0.0), (15_000.0, 0.0)]
+    path = build_gold_flight(tmp_path / "g.igc", legs=short_return, declared=_DECLARED)
+    req, report = _requirement(path)
+    check = report.analysis.task_check
+
+    assert req.verdict is Verdict.PASS
+    assert check.course is CourseType.THREE_TP
+    assert check.waypoints[-1].label == "Fix d'arrivo"
+    assert 300 < check.distance_m / 1000 < 310
 
 
 def test_missed_task_falls_back_to_straight_line(tmp_path):
@@ -205,8 +220,10 @@ def test_failed_task_reports_straight_line_too(tmp_path):
     assert "In linea retta dallo sgancio" in " ".join(req.reasons)
 
 
-def test_turnpoints_must_be_in_declared_order(tmp_path):
-    # Percorso dichiarato con due virate, volate in ordine invertito.
+def test_turnpoints_in_any_order_count_as_three_tp_distance(tmp_path):
+    # Due virate dichiarate e volate in ordine invertito: nell'ordine
+    # dichiarato il percorso non e' completato, ma la distanza fino a 3 virate
+    # ammette qualsiasi ordine (§1.4.2f).
     declared = [
         (0.0, 0.0, "DECOLLO"),
         (0.0, 0.0, "PARTENZA"),
@@ -218,9 +235,11 @@ def test_turnpoints_must_be_in_declared_order(tmp_path):
     legs = [(3000.0, 0.0), (0.0, 0.0), (0.0, 160_000.0), (160_000.0, 0.0), (0.0, 0.0)]
     path = build_gold_flight(tmp_path / "g.igc", legs=legs, declared=declared)
     req, report = _requirement(path)
+    check = report.analysis.task_check
 
-    assert req.verdict is Verdict.FAIL
-    assert [w.label for w in report.analysis.task_check.missed] == ["Virata 2"]
+    assert req.verdict is Verdict.PASS
+    assert check.course is CourseType.THREE_TP
+    assert [w.waypoint.name for w in check.waypoints[1:3]] == ["VIRATA B", "VIRATA A"]
 
 
 def test_straight_line_300km_without_declaration_passes(tmp_path):

@@ -17,7 +17,7 @@ verificato e **perche'** e' stato accettato o rifiutato.
 | Requisito | Soglia | Come viene misurato |
 |-----------|--------|---------------------|
 | Durata | 5 h | identica all'argento |
-| Distanza | 300 km | con dichiarazione (record C dell'IGC): somma delle tratte del **percorso dichiarato**, ogni punto toccato **nell'ordine dichiarato** entrando nella sua zona di osservazione (500 m sulle virate, 1 km su partenza e arrivo). Senza dichiarazione, o se il percorso dichiarato non e' completato: distanza in linea retta dallo sgancio al fix d'arrivo migliore (§2.2) |
+| Distanza | 300 km | con dichiarazione (record C dell'IGC): il percorso dichiarato nell'ordine dichiarato e, con 1-3 virate, anche come **distanza fino a 3 virate** (§1.4.2f: ordine libero, partenza dichiarata o sgancio, arrivo dichiarato o un fix). Zone di osservazione: 500 m sulle virate, 1 km su partenza e arrivo. In ogni caso anche la linea retta dallo sgancio al fix d'arrivo migliore (§1.4.2d). Vale l'esito migliore (§2.2) |
 | Guadagno di quota | 3000 m | stesso criterio dell'argento |
 
 Se il file non contiene una dichiarazione, la distanza d'oro si valuta come

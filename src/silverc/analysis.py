@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from silverc.course import CourseType, classify_course, is_closed
+from silverc.course import TaskCheck, verify_declared_task
 from silverc.documentation import RecorderInfo, RecorderKind, classify_recorder
 from silverc.geo import (
     Point,
@@ -19,7 +19,7 @@ from silverc.geo import (
     geodesic_distance_m,
     loss_of_height,
 )
-from silverc.igc import DeclaredTask, Fix, Flight, Waypoint
+from silverc.igc import Fix, Flight
 from silverc.rules import PARAMS, RULES
 
 logger = logging.getLogger(__name__)
@@ -64,7 +64,7 @@ class FlightAnalysis:
     engine_suspected: bool
     max_enl: int | None
     notes: list[str]
-    task_check: "TaskCheck | None" = None
+    task_check: TaskCheck | None = None
     recorder: RecorderInfo | None = None
     altitude_usable: bool = True
     calibrated: bool = False
@@ -244,135 +244,6 @@ def finish_fix(
             float(release_alt - alt) if release_alt is not None and alt is not None else 0.0
         ),
     )
-
-
-@dataclass
-class WaypointCheck:
-    """Esito del passaggio su un punto del percorso dichiarato."""
-
-    waypoint: Waypoint
-    label: str
-    radius_m: float
-    reached: bool
-    closest_m: float
-    point: Point | None
-
-
-@dataclass
-class TaskCheck:
-    """Esito complessivo del percorso dichiarato."""
-
-    task: DeclaredTask
-    waypoints: list[WaypointCheck]
-    distance_m: float
-    loss_of_height_m: float
-    course: CourseType = CourseType.THREE_TP
-    closed: bool = False
-    # La partenza e' stata attraversata solo prima dello sgancio (§1.3.1).
-    start_before_release: bool = False
-
-    @property
-    def completed(self) -> bool:
-        return all(w.reached for w in self.waypoints)
-
-    @property
-    def missed(self) -> list[WaypointCheck]:
-        return [w for w in self.waypoints if not w.reached]
-
-
-def _task_labels(task: DeclaredTask) -> list[str]:
-    return (
-        ["Partenza"]
-        + [f"Virata {i}" for i in range(1, len(task.turnpoints) + 1)]
-        + ["Arrivo"]
-    )
-
-
-def declared_task_distance_m(task: DeclaredTask) -> float:
-    """Somma delle tratte fra i punti dichiarati."""
-    points = task.points
-    return sum(
-        geodesic_distance_ll(a.lat, a.lon, b.lat, b.lon)
-        for a, b in zip(points, points[1:])
-    )
-
-
-def verify_declared_task(
-    fixes: list[Fix],
-    task: DeclaredTask,
-    start_index: int,
-    end_index: int,
-    use_gnss: bool = False,
-) -> TaskCheck:
-    """Verifica che la traccia tocchi i punti dichiarati **nell'ordine previsto**.
-
-    Ogni punto e' considerato raggiunto quando un fix cade dentro la sua zona
-    di osservazione; la ricerca del punto successivo riparte da li'.
-    """
-    labels = _task_labels(task)
-    points = task.points
-    last_index = min(end_index, len(fixes) - 1)
-    checks: list[WaypointCheck] = []
-    cursor = start_index
-
-    for order, (waypoint, label) in enumerate(zip(points, labels)):
-        is_edge = order in (0, len(points) - 1)
-        radius = (
-            PARAMS.start_finish_zone_radius_m if is_edge else PARAMS.turnpoint_zone_radius_m
-        )
-        reached_at: Point | None = None
-        closest = float("inf")
-        closest_at: Point | None = None
-        for i in range(cursor, last_index + 1):
-            distance = fast_distance_ll(waypoint.lat, waypoint.lon, fixes[i].lat, fixes[i].lon)
-            if distance < closest:
-                closest, closest_at = distance, Point(i, fixes[i])
-            if distance <= radius:
-                reached_at = Point(i, fixes[i])
-                break
-        checks.append(
-            WaypointCheck(
-                waypoint=waypoint,
-                label=label,
-                radius_m=radius,
-                reached=reached_at is not None,
-                closest_m=closest if closest != float("inf") else 0.0,
-                point=reached_at or closest_at,
-            )
-        )
-        if reached_at is not None:
-            cursor = reached_at.index
-
-    start_check, finish_check = checks[0], checks[-1]
-    start_before_release = not start_check.reached and any(
-        fast_distance_ll(task.start.lat, task.start.lon, fixes[i].lat, fixes[i].lon)
-        <= start_check.radius_m
-        for i in range(0, min(start_index, len(fixes)))
-    )
-    loss = 0.0
-    if start_check.reached and finish_check.reached and start_check.point and finish_check.point:
-        start_alt = altitude(start_check.point.fix, use_gnss)
-        finish_alt = altitude(finish_check.point.fix, use_gnss)
-        if start_alt is not None and finish_alt is not None:
-            loss = float(start_alt - finish_alt)
-
-    result = TaskCheck(
-        task=task,
-        waypoints=checks,
-        distance_m=declared_task_distance_m(task),
-        loss_of_height_m=loss,
-        course=classify_course(task),
-        closed=is_closed(task),
-        start_before_release=start_before_release,
-    )
-    logger.debug(
-        "Percorso dichiarato: %d punti, distanza=%.1fkm, completato=%s, mancati=%s",
-        len(checks),
-        result.distance_m / 1000,
-        result.completed,
-        [w.label for w in result.missed],
-    )
-    return result
 
 
 def median_fix_interval_s(fixes: list[Fix], start_index: int, end_index: int) -> float:
@@ -654,9 +525,7 @@ def analyse(
         engine_start=engine_start,
         notes=notes,
         task_check=(
-            verify_declared_task(
-                fixes, flight.task, release.index, finish.index, use_gnss_altitude
-            )
+            verify_declared_task(fixes, flight.task, release, finish.index, use_gnss_altitude)
             if flight.task is not None
             else None
         ),
