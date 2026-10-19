@@ -10,7 +10,7 @@ verificato e **perche'** e' stato accettato o rifiutato.
 |-----------|--------|---------------------|
 | Durata | 5 h | Dallo sgancio all'atterraggio (i fix registrati da fermo a fine volo vengono scartati) |
 | Distanza | 50 km | Distanza geodetica dallo sgancio al **punto più lontano** della traccia (non l'atterraggio); dev'essere oltre 50 km sia dallo sgancio sia dall'aeroporto di decollo, con perdita di quota ≤ 1% |
-| Guadagno di quota | 1000 m | Massima differenza fra un punto alto e un punto basso **che lo precede**, entrambi dopo lo sgancio |
+| Guadagno di quota | 1000 m | Massima differenza fra un punto alto e un punto basso **che lo precede**, entrambi dopo lo sgancio. Con un Position Recorder: quota GNSS e soglia +100 m |
 
 ## Insegna d'oro (`--badge oro`)
 
@@ -25,6 +25,19 @@ distanza in linea retta con partenza allo sgancio: l'art. 13.2 del Regolamento
 Insegne non richiede la dichiarazione pre-volo per questa geometria. A
 differenza dell'argento non si applica il vincolo dei 50 km anche dal luogo di
 decollo, che l'art. 5.1a pone solo per la distanza d'argento.
+
+## Controlli sul file IGC
+
+Il report ha una sezione *Documentazione* che non incide sull'esito delle tre
+prove:
+
+- **intestazione**: nome e cognome del pilota, tipo di aliante e marche; la
+  sigla di gara è facoltativa;
+- **registratore**: *Flight Recorder* approvato IGC solo se il codice
+  costruttore del record A è fra quelli approvati (`rules.RECORDERS`), il
+  G-record è presente e il modello è dichiarato. Altrimenti *Position
+  Recorder*: quota GNSS e soglia del guadagno di quota maggiorata di 100 m.
+  Con `--recorder fr|pr` il tipo si indica a mano.
 
 I tre requisiti possono essere ottenuti in **voli diversi**: il report li valuta
 in modo indipendente e indica quali sono coperti dalla traccia in esame.
@@ -46,8 +59,10 @@ uv run silverc volo.igc --badge oro --release-time 11:42:30 --verbose
   questo parametro il programma lo stima dalla traccia (fine della salita
   continua iniziale) e lo dichiara nel report; se la stima e' poco affidabile
   il verdetto su durata e quota diventa `NON DETERMINABILE`.
-- `--gnss-altitude`: usa la quota GNSS al posto di quella barometrica,
-  applicando la penalizzazione di 100 m prevista per le insegne Silver/Gold.
+- `--recorder auto|fr|pr`: tipo di registratore (default `auto`, ricavato
+  dal file). Con `pr` si usa la quota GNSS e la soglia di quota sale di 100 m.
+- `--gnss-altitude`: usa la quota GNSS anche con un Flight Recorder,
+  applicando la stessa maggiorazione di 100 m.
 - `--verbose`: log di dettaglio su stderr.
 
 Codici di uscita: `0` volo che copre tutti e tre i requisiti, `1` copertura
@@ -76,26 +91,10 @@ Le tracce di test sono sintetiche e generate da `test/igc_builder.py`
 (rollover di mezzanotte, spike di quota, fix a terra finali, massimo di quota
 che precede il minimo).
 
-## Pubblicazione su Railway
+## Documentazione
 
-L'app e' containerizzata: Railway rileva il `Dockerfile` e la configurazione in
-`railway.json` (healthcheck su `/_stcore/health`). La porta arriva dalla
-variabile d'ambiente `PORT`, assegnata da Railway a runtime.
-
-Prova locale, identica a quella che gira in produzione:
-
-```bash
-make docker-run
-```
-
-Deploy dalla cartella corrente, senza bisogno di un remote git:
-
-```bash
-railway login && railway init && railway up
-```
-
-In alternativa si collega un repo GitHub dalla dashboard Railway e ogni push
-fa il deploy.
-
-Nessuna variabile d'ambiente da configurare: l'app non usa segreti e non
-persiste i file caricati.
+- [Pubblicazione su Railway](docs/deploy-railway.md) — prerequisiti, prova
+  locale con Docker, comandi di deploy e diagnostica.
+- [Convenzioni di sviluppo](docs/convenzioni.md) — stile, logging, testing,
+  versionamento, regole sui commit.
+- [Requisiti delle insegne](REQUISITI.md) — condizioni minime delle prove.
