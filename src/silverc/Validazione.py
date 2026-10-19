@@ -51,6 +51,11 @@ release_input = st.text_input(
     help="L'IGC non registra lo sgancio: se lasciato vuoto viene stimato dalla "
     "traccia. Indicarlo quando la stima ha confidenza bassa (SC3 §2.4.2a).",
 )
+internet_declaration = st.checkbox(
+    "Dichiarazione via internet",
+    help="Se ammessa dalla NAC sostituisce quella del registratore (SC3 §2.3a); va "
+    "allegata alla richiesta.",
+)
 use_gnss_altitude = st.checkbox("Usa la quota GNSS invece di quella barometrica (con penalizzazione)")
 
 uploaded_file = st.file_uploader("Carica un file IGC", type=["igc"])
@@ -79,7 +84,9 @@ if uploaded_file is not None:
                 recorder_kind=_RECORDER_OPTIONS[recorder_choice],
                 calibrated=calibrated,
             )
-            report = validate_badge(flight, analysis, BADGES[badge])
+            report = validate_badge(
+                flight, analysis, BADGES[badge], internet_declaration=internet_declaration
+            )
 
             satisfied = len(report.satisfied)
             if report.complete:

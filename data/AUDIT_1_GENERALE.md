@@ -35,7 +35,7 @@ Codici: **T** trasversali, **D** durata, **Q** guadagno di quota, **K** distanza
 | GT8 | Sgancio inseribile a mano anche dall'interfaccia web | Maurizio | ✅ |
 | GT9 | Identificativo dell'aliante: marche **oppure** sigla di gara | §1.1.3 | ✅ |
 | GT10 | Pilota o marche mancanti o errati: correggibili con certificato dell'OO | §2.3b, §4.4.2c | ✅ |
-| GT11 | Dichiarazione pre-volo (anche via internet, se ammessa dalla NAC) | §1.1.4, §2.3a | 🟡 |
+| GT11 | Dichiarazione pre-volo (anche via internet, se ammessa dalla NAC) | §1.1.4, §2.3a | ✅ |
 | GT12 | Distanze sull'ellissoide WGS84 | §1.3.7 | 🟡 |
 | GT13 | Imprecisioni di misura al massimo svantaggio del pilota | §4.3.4b | 🟡 |
 | GT14 | Firma del file (G-record) verificata col programma IGC | §4.3.4a | 🟡 |
@@ -96,9 +96,10 @@ sbagliati non annullano la prova: l'OO allega un certificato di correzione. Il r
 deve presentarli come bloccanti. Risolto: `documentation.check_headers` aggiunge a ogni
 controllo fallito su pilota o identificativo che l'OO può allegare il certificato.
 
-**GT11 — Dichiarazione.** Si controlla solo che l'orario preceda il primo fix; va
-confrontato col decollo. Una dichiarazione via internet sostituisce quella del registratore
-(§2.3a) e non è nel file: serve un modo per segnalarla.
+**GT11 — Dichiarazione.** Risolto: l'orario della dichiarazione si confronta col decollo
+e non col primo fix. Una dichiarazione via internet sostituisce quella del registratore
+(§2.3a) e non è nel file: si indica con `--internet-declaration` o con una casella nella
+pagina web, e il report ricorda cosa allegare.
 
 **GT12 — WGS84.** `geographiclib` è già una dipendenza obbligatoria, quindi di norma il
 calcolo è conforme. Resta però il ripiego sulla sfera FAI se la libreria manca, che lo SC3
@@ -141,7 +142,7 @@ Identico per le due insegne salvo la soglia (1000 m Argento, 3000 m Oro).
 | GQ2 | Margine di 100 m con quota GNSS | §2.4.3c | ✅ (= GT2) |
 | GQ3 | Quota barometrica corretta con la taratura | §2.4.3a | ❌ (= GT3) |
 | GQ4 | Nessun vincolo sul punto basso oltre a seguire lo sgancio | §1.3.5 | ✅ |
-| GQ5 | Dichiarazione con pilota e identificativo | §1.4.4 | 🟡 (= GT11) |
+| GQ5 | Dichiarazione con pilota e identificativo | §1.4.4 | ✅ (= GT11) |
 
 **GQ4 — Punto basso.** Lo SC3 non vincola il punto basso alla quota di sgancio: basta che
 preceda il punto alto (§1.3.5). Il codice fa già così.

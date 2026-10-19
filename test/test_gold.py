@@ -237,6 +237,27 @@ def test_declaration_after_takeoff_is_warned(tmp_path):
     assert any("prima del volo" in w for w in report.warnings)
 
 
+def test_declaration_on_ground_before_takeoff_is_accepted(tmp_path):
+    # Logger acceso alle 10:00, dichiarazione alle 10:01, decollo alle 10:02.
+    path = build_gold_flight(
+        tmp_path / "g.igc", legs=_OUT_AND_RETURN, declared=_DECLARED, declared_hhmmss="100100"
+    )
+    _, report = _requirement(path)
+
+    assert not any("prima del volo" in w for w in report.warnings)
+
+
+def test_internet_declaration_is_reported(tmp_path):
+    path = build_gold_flight(
+        tmp_path / "g.igc", legs=_OUT_AND_RETURN, declared=_DECLARED, declared_hhmmss="110000"
+    )
+    flight = parse_igc(path)
+    report = validate_badge(flight, analyse(flight), GOLD, internet_declaration=True)
+
+    assert any("§2.3a" in w for w in report.warnings)
+    assert not any("prima del volo" in w for w in report.warnings)
+
+
 def test_silver_thresholds_still_apply_to_silver(tmp_path):
     path = build_gold_flight(tmp_path / "g.igc", legs=_OUT_AND_RETURN, declared=_DECLARED)
     flight = parse_igc(path)

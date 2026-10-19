@@ -69,6 +69,8 @@ uv run silverc volo.igc --badge oro --release-time 11:42:30 --verbose
   stesso orario si indica nel campo *Orario di sgancio*.
 - `--recorder auto|fr|pr`: tipo di registratore (default `auto`, ricavato
   dal file).
+- `--internet-declaration`: il pilota ha usato una dichiarazione via internet,
+  che sostituisce quella del registratore (§2.3a).
 - `--calibrated`: il registratore ha dati di taratura barometrica; si usa la
   quota barometrica senza margine. Senza questa opzione quota GNSS e margine
   di 100 m (§2.4.6a).

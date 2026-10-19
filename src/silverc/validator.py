@@ -453,9 +453,16 @@ def check_best_distance(analysis: FlightAnalysis, rules: BadgeRules = GOLD) -> R
 
 
 def validate_badge(
-    flight: Flight, analysis: FlightAnalysis, rules: BadgeRules = SILVER
+    flight: Flight,
+    analysis: FlightAnalysis,
+    rules: BadgeRules = SILVER,
+    internet_declaration: bool = False,
 ) -> ValidationReport:
-    """Valuta i tre requisiti di un'insegna su un singolo volo."""
+    """Valuta i tre requisiti di un'insegna su un singolo volo.
+
+    `internet_declaration` indica che il pilota ha usato una dichiarazione via
+    internet, che sostituisce quella del registratore (§2.3a) e non e' nel file.
+    """
     # Senza percorso dichiarato il volo si valuta come distanza in linea retta
     # con partenza allo sgancio (§1.4.2d), ammessa anche per l'oro (§2.2.2a).
     distance = (
@@ -484,11 +491,21 @@ def validate_badge(
     warnings: list[str] = list(analysis.notes)
 
     task = flight.task
-    if task is not None and task.declared_at is not None and flight.fixes:
-        if task.declared_at > flight.fixes[0].time:
+    if internet_declaration:
+        warnings.append(
+            "Dichiarazione via internet indicata dall'utente: sostituisce quella del "
+            "registratore (§2.3a) e non e' verificabile dal file. Va allegata alla "
+            "richiesta (§2.4b) con pilota, identificativo dell'aliante, punti "
+            "richiesti, nome dell'OO e tipo e numero di serie di ogni registratore."
+        )
+    elif task is not None and task.declared_at is not None:
+        # La dichiarazione deve precedere il decollo (§1.1.4), non il primo fix:
+        # il registratore puo' essere acceso a terra prima di dichiarare.
+        if task.declared_at > analysis.takeoff.time:
             warnings.append(
-                "La dichiarazione del percorso porta un orario successivo al primo "
-                "fix registrato: va depositata prima del volo."
+                f"La dichiarazione del percorso porta l'orario "
+                f"{task.declared_at:%H:%M:%S} UTC, successivo al decollo delle "
+                f"{analysis.takeoff.time:%H:%M:%S} UTC: va fatta prima del volo (§1.1.4)."
             )
 
     if not flight.has_g_record:

@@ -61,6 +61,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="il registratore ha dati di taratura barometrica: usa la quota barometrica "
         "senza margine; altrimenti quota GNSS e margine di 100 m (SC3 §2.4.6)",
     )
+    parser.add_argument(
+        "--internet-declaration",
+        action="store_true",
+        help="il pilota ha usato una dichiarazione via internet, che sostituisce quella "
+        "del registratore (SC3 §2.3a)",
+    )
     parser.add_argument("-v", "--verbose", action="store_true", help="log di dettaglio su stderr")
     return parser
 
@@ -94,7 +100,9 @@ def main(argv: list[str] | None = None) -> int:
         recorder_kind=_RECORDER_CHOICES[args.recorder],
         calibrated=args.calibrated,
     )
-    report = validate_badge(flight, analysis, BADGES[args.badge])
+    report = validate_badge(
+        flight, analysis, BADGES[args.badge], internet_declaration=args.internet_declaration
+    )
     sys.stdout.write(render(report) + "\n")
     return EXIT_OK if report.complete else EXIT_NOT_VALID
 
