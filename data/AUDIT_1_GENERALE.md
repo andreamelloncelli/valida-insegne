@@ -28,7 +28,7 @@ Codici: **T** trasversali, **D** durata, **Q** guadagno di quota, **K** distanza
 | GT1 | Registratore: FR approvato livello 1–3 oppure PR approvato dalla NAC | §2.2.6a, §2.5 | 🟡 |
 | GT2 | Quota GNSS con margine di 100 m su **tutti** i requisiti di quota quando manca la taratura barometrica | §2.4.3c, §2.4.6a | ✅ |
 | GT3 | Correzione della quota barometrica con la curva di taratura | §2.4.3a, §4.3.4c | ❌ |
-| GT4 | Cadenza di almeno un fix al minuto | §2.4.1 | ❌ |
+| GT4 | Cadenza di almeno un fix al minuto | §2.4.1 | ✅ |
 | GT5 | Continuità: nessun atterraggio intermedio, buchi oltre 1 min da segnalare | §2.4.5, §4.3.5b | ❌ |
 | GT6 | Nessun uso del motore durante la prova | §2.4.5, §2.4.7 | 🟡 |
 | GT7 | Sgancio ricavato dalla traccia (inizio della discesa o della virata stretta) | §2.4.2a | ✅ |
@@ -65,7 +65,10 @@ condizione sulla quota GNSS.
 corretta con la curva quando è determinante (§2.4.3a). Il codice usa la quota ISA grezza.
 Basta, per cominciare, accettare una tabella di correzione opzionale.
 
-**GT4 — Cadenza dei fix.** Nessun controllo. Va segnalato ogni intervallo oltre 60 s.
+**GT4 — Cadenza dei fix.** Risolto: se l'intervallo mediano fra sgancio e atterraggio
+supera i 60 s il report avverte che la cadenza impostata non rispetta il §2.4.1. I singoli
+buchi oltre il minuto sono un problema di continuità (GT5). Con fix radi il rilevamento
+dell'atterraggio non si ferma più al primo intervallo oltre la finestra di sosta.
 
 **GT5 — Continuità.** L'atterraggio è l'ultima sosta della traccia. Una sosta intermedia
 (atterraggio fuori campo e ripartenza) non viene rilevata. Un buco di dati oltre 1 minuto
@@ -114,7 +117,7 @@ Identica per le due insegne: 5 h (§2.2.1b, §2.2.2b).
 | GD2 | 5 h senza tolleranza | §2.2.1b, §2.2.2b | ✅ |
 | GD3 | Fine al primo fra atterraggio e avvio del motore | §1.3.2c | ❌ |
 | GD4 | Dichiarazione non richiesta | §2.3 | ✅ |
-| GD5 | Cadenza di almeno un fix al minuto | §2.4.1 | ❌ (= GT4) |
+| GD5 | Cadenza di almeno un fix al minuto | §2.4.1 | ✅ (= GT4) |
 
 **GD3 — Motoalianti.** La durata finisce all'atterraggio. Se il motore viene avviato
 prima, la prova finisce lì. Dipende da GT6.

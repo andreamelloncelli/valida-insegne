@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from flights import GROUND_ALT, RELEASE_T, TAKEOFF_T, TOW_TOP_ALT, build_flight, climbing_profile, descending_profile
@@ -145,3 +147,39 @@ def test_parse_release_time_rejects_bad_input(tmp_path):
     )
     with pytest.raises(ValueError):
         parse_release_time("dopo pranzo", parse_igc(path))
+
+
+def test_normal_cadence_is_not_warned(tmp_path):
+    path = build_flight(
+        tmp_path / "t.igc",
+        soaring_duration_s=3600,
+        distance_m=20_000,
+        altitude=descending_profile(),
+    )
+    analysis = analyse(parse_igc(path))
+
+    assert analysis.median_fix_interval_s == 30
+    assert not any("§2.4.1" in n for n in analysis.notes)
+
+
+def test_sparse_cadence_is_warned(tmp_path):
+    path = build_flight(
+        tmp_path / "t.igc",
+        soaring_duration_s=3600,
+        distance_m=20_000,
+        altitude=descending_profile(),
+    )
+    lines = Path(path).read_text(encoding="latin-1").splitlines()
+    b_records = [i for i, line in enumerate(lines) if line.startswith("B")]
+    # Tiene un B-record su tre: un fix ogni 90 s durante il veleggiamento.
+    dropped = {i for n, i in enumerate(b_records) if n > 30 and n % 3}
+    Path(path).write_text(
+        "\n".join(line for i, line in enumerate(lines) if i not in dropped) + "\n",
+        encoding="latin-1",
+    )
+    analysis = analyse(parse_igc(path))
+
+    # Con fix radi l'atterraggio non va anticipato al primo intervallo lungo.
+    assert analysis.duration_s > 3000
+    assert analysis.median_fix_interval_s > 60
+    assert any("§2.4.1" in n for n in analysis.notes)

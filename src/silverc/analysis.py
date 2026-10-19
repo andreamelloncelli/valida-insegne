@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import logging
 import math
+import statistics
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from silverc.documentation import RecorderInfo, RecorderKind, classify_recorder
 from silverc.igc import DeclaredTask, Fix, Flight, Waypoint
-from silverc.rules import PARAMS
+from silverc.rules import PARAMS, RULES
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +81,7 @@ class FlightAnalysis:
     altitude_usable: bool = True
     calibrated: bool = False
     balanced_finish: FinishFix | None = None
+    median_fix_interval_s: float = 0.0
 
     @property
     def duration_s(self) -> float:
@@ -138,6 +140,15 @@ def _moving_flags(fixes: list[Fix]) -> list[bool]:
                 flags[i] = True
                 break
             j += stride
+        # Con fix piu' radi della finestra nessun fix cade al suo interno: si
+        # guarda allora lo spostamento fino al fix successivo.
+        if (
+            not flags[i]
+            and i + 1 < len(fixes)
+            and fixes[i + 1].time.timestamp() > limit
+            and _fast_distance_m(fix, fixes[i + 1]) >= PARAMS.stationary_radius_m
+        ):
+            flags[i] = True
     return flags
 
 
@@ -346,6 +357,13 @@ def verify_declared_task(
     return result
 
 
+def median_fix_interval_s(fixes: list[Fix], start_index: int, end_index: int) -> float:
+    """Intervallo mediano fra fix consecutivi: la cadenza impostata sul registratore."""
+    window = fixes[start_index : end_index + 1]
+    intervals = [(b.time - a.time).total_seconds() for a, b in zip(window, window[1:])]
+    return statistics.median(intervals) if intervals else 0.0
+
+
 def parse_release_time(value: str, flight: Flight) -> datetime:
     """Orario di sgancio HH:MM[:SS] UTC indicato dall'utente, alla data del volo."""
     for fmt in ("%H:%M:%S", "%H:%M"):
@@ -483,6 +501,14 @@ def analyse(
         ),
     )
 
+    cadence = median_fix_interval_s(fixes, release.index, landing.index)
+    if cadence > RULES.max_fix_interval_s:
+        notes.append(
+            f"Cadenza di registrazione di un fix ogni {cadence:.0f} s: lo SC3 chiede "
+            f"almeno un fix ogni {RULES.max_fix_interval_s:.0f} s (§2.4.1). La traccia "
+            "non e' una prova sufficiente per la richiesta."
+        )
+
     enl_values = [f.enl for f in fixes[release.index : landing.index + 1] if f.enl is not None]
     max_enl = max(enl_values) if enl_values else None
     engine_suspected = bool(
@@ -505,6 +531,7 @@ def analyse(
         altitude_source=altitude_source,
         engine_suspected=engine_suspected,
         max_enl=max_enl,
+        median_fix_interval_s=cadence,
         notes=notes,
         task_check=(
             verify_declared_task(

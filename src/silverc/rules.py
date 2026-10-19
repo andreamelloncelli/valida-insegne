@@ -52,6 +52,9 @@ class BadgeRules:
     # approvato.
     gnss_altitude_penalty_m: float = 100.0
 
+    # §2.4.1: il registratore dev'essere impostato su almeno un fix al minuto.
+    max_fix_interval_s: float = 60.0
+
     # Non regolamentare: soglia oltre la quale il verdetto e' MARGINAL perche'
     # l'incertezza del modello geodetico / del sensore puo' ribaltarlo.
     marginal_ratio: float = 0.005
