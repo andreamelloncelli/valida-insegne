@@ -114,6 +114,18 @@ def classify_recorder(flight: Flight, override: RecorderKind | None = None) -> R
             hardware=flight.recorder_hardware,
         )
 
+    if info.is_flight_recorder:
+        info.reasons.append(
+            "Per Argento e Oro serve un Flight Recorder approvato IGC di livello 1, 2 o "
+            "3 (§2.2.6a): il livello non e' ricavabile dal file."
+        )
+    else:
+        info.reasons.append(
+            "Un Position Recorder dev'essere di un tipo approvato dalla NAC (§2.2.6a, "
+            "§2.5b) e avere disattivata la stima dei fix, con certificato dell'OO "
+            "(§2.5e, §4.4.2f)."
+        )
+
     logger.debug(
         "Classificazione registratore: costruttore=%s, modello=%s, G-record=%s, override=%s "
         "| %.1fms | esito: %s",

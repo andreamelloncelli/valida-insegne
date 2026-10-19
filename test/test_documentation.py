@@ -234,3 +234,15 @@ def test_hardware_version_is_read_and_reported(tmp_path):
 
 def test_missing_hardware_version_is_nd(tmp_path):
     assert classify_recorder(_flight(tmp_path)).hardware == "n/d"
+
+
+def test_position_recorder_reminds_fix_estimation(tmp_path):
+    info = classify_recorder(_flight(tmp_path, a_record="AXCSAAA XCSoar"))
+
+    assert "§2.5e" in " ".join(info.reasons)
+
+
+def test_flight_recorder_reminds_approval_level(tmp_path):
+    info = classify_recorder(_flight(tmp_path))
+
+    assert "§2.2.6a" in " ".join(info.reasons)

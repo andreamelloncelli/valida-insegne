@@ -25,7 +25,7 @@ Codici: **T** trasversali, **D** durata, **Q** guadagno di quota, **K** distanza
 
 | # | Tema | SC3 | Stato |
 | --- | --- | --- | --- |
-| GT1 | Registratore: FR approvato livello 1–3 oppure PR approvato dalla NAC | §2.2.6a, §2.5 | 🟡 |
+| GT1 | Registratore: FR approvato livello 1–3 oppure PR approvato dalla NAC | §2.2.6a, §2.5 | ✅ |
 | GT2 | Quota GNSS con margine di 100 m su **tutti** i requisiti di quota quando manca la taratura barometrica | §2.4.3c, §2.4.6a | ✅ |
 | GT3 | Correzione della quota barometrica con la curva di taratura | §2.4.3a, §4.3.4c | ❌ |
 | GT4 | Cadenza di almeno un fix al minuto | §2.4.1 | ✅ |
@@ -45,7 +45,8 @@ Codici: **T** trasversali, **D** durata, **Q** guadagno di quota, **K** distanza
 **GT1 — Registratore.** Il codice distingue FR e PR dal codice costruttore, dal G-record e
 da HFFTY. Non può verificare il livello di approvazione né la lista PR della NAC: lo dice
 nel report e va bene così. Con un PR va ricordato che la stima dei fix deve essere
-disattivata (§2.5e, certificato §4.4.2f).
+disattivata (§2.5e, certificato §4.4.2f). Risolto: il report ricorda il livello per gli FR
+e l'approvazione NAC con la stima dei fix disattivata per i PR.
 
 **GT2 — Margine dei 100 m: è legato alla taratura, non al tipo di registratore.**
 Il §2.4.6a applica il §2.4.3c a «FR o PR senza dati di taratura». Il codice usava la
