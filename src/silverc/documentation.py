@@ -188,11 +188,23 @@ def check_competition_id(flight: Flight) -> DocumentCheck:
     return DocumentCheck("Sigla di gara", value, True, "Presente.")
 
 
+CORRECTABLE_NOTE = (
+    "Non annulla la prova d'Argento o d'Oro: l'OO puo' allegare un certificato di "
+    "correzione (§2.3b, §4.4.2c)."
+)
+
+
 def check_headers(flight: Flight) -> list[DocumentCheck]:
     """Controlli sui dati del pilota e dell'aliante nell'intestazione IGC."""
-    return [
+    checks = [
         check_pilot(flight),
         check_glider_type(flight),
         check_registration(flight),
         check_competition_id(flight),
     ]
+    # §2.3b: pilota o identificativo mancanti o errati si correggono con un
+    # certificato dell'OO, non invalidano la richiesta.
+    for check in checks:
+        if check.label in {"Pilota", "Marche"} and check.ok is not True:
+            check.reason = f"{check.reason} {CORRECTABLE_NOTE}"
+    return checks

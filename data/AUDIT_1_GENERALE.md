@@ -34,7 +34,7 @@ Codici: **T** trasversali, **D** durata, **Q** guadagno di quota, **K** distanza
 | GT7 | Sgancio ricavato dalla traccia (inizio della discesa o della virata stretta) | §2.4.2a | ✅ |
 | GT8 | Sgancio inseribile a mano anche dall'interfaccia web | Maurizio | ✅ |
 | GT9 | Identificativo dell'aliante: marche **oppure** sigla di gara | §1.1.3 | ✅ |
-| GT10 | Pilota o marche mancanti o errati: correggibili con certificato dell'OO | §2.3b, §4.4.2c | 🟡 |
+| GT10 | Pilota o marche mancanti o errati: correggibili con certificato dell'OO | §2.3b, §4.4.2c | ✅ |
 | GT11 | Dichiarazione pre-volo (anche via internet, se ammessa dalla NAC) | §1.1.4, §2.3a | 🟡 |
 | GT12 | Distanze sull'ellissoide WGS84 | §1.3.7 | 🟡 |
 | GT13 | Imprecisioni di misura al massimo svantaggio del pilota | §4.3.4b | 🟡 |
@@ -93,7 +93,8 @@ dichiarazione: lo conferma l'OO al decollo (§4.3.1).
 
 **GT10 — Errori nell'intestazione.** Per Argento e Oro un nome o un identificativo
 sbagliati non annullano la prova: l'OO allega un certificato di correzione. Il report non
-deve presentarli come bloccanti; oggi li segna come mancanti senza dirlo.
+deve presentarli come bloccanti. Risolto: `documentation.check_headers` aggiunge a ogni
+controllo fallito su pilota o identificativo che l'OO può allegare il certificato.
 
 **GT11 — Dichiarazione.** Si controlla solo che l'orario preceda il primo fix; va
 confrontato col decollo. Una dichiarazione via internet sostituisce quella del registratore

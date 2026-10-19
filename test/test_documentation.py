@@ -171,6 +171,13 @@ def test_pilot_needs_name_and_surname(tmp_path):
     checks = _checks(_flight(tmp_path, pilot="Rossi"))
 
     assert checks["Pilota"].ok is False
+    assert "certificato di correzione" in checks["Pilota"].reason
+
+
+def test_correct_header_has_no_correction_note(tmp_path):
+    checks = _checks(_flight(tmp_path))
+
+    assert not any("certificato" in c.reason for c in checks.values())
 
 
 def test_missing_glider_type_is_left_to_the_oo(tmp_path):
