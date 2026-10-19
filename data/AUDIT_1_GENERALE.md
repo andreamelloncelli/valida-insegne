@@ -33,7 +33,7 @@ Codici: **T** trasversali, **D** durata, **Q** guadagno di quota, **K** distanza
 | GT6 | Nessun uso del motore durante la prova | §2.4.5, §2.4.7 | 🟡 |
 | GT7 | Sgancio ricavato dalla traccia (inizio della discesa o della virata stretta) | §2.4.2a | ✅ |
 | GT8 | Sgancio inseribile a mano anche dall'interfaccia web | Maurizio | ✅ |
-| GT9 | Identificativo dell'aliante: marche **oppure** sigla di gara | §1.1.3 | ❌ |
+| GT9 | Identificativo dell'aliante: marche **oppure** sigla di gara | §1.1.3 | ✅ |
 | GT10 | Pilota o marche mancanti o errati: correggibili con certificato dell'OO | §2.3b, §4.4.2c | 🟡 |
 | GT11 | Dichiarazione pre-volo (anche via internet, se ammessa dalla NAC) | §1.1.4, §2.3a | 🟡 |
 | GT12 | Distanze sull'ellissoide WGS84 | §1.3.7 | 🟡 |
@@ -84,7 +84,9 @@ motore (GD3). Con motore sigillato decide l'OO (§2.4.7).
 **GT8 — Sgancio dall'interfaccia web.** Risolto: la pagina web ha un campo HH:MM:SS UTC,
 letto con `analysis.parse_release_time` come `--release-time` da riga di comando.
 
-**GT9 — Identificativo dell'aliante.** Per il §1.1.3 basta una fra marche e sigla di gara.
+**GT9 — Identificativo dell'aliante.** Risolto in `documentation.check_registration`: la
+sigla di gara sostituisce le marche mancanti, e il tipo di aliante mancante è lasciato
+all'OO. Per il §1.1.3 basta una fra marche e sigla di gara.
 Il codice esige le marche (HFGID) e tratta la sigla come facoltativa: un file con sola
 sigla risulta incompleto a torto. Il tipo di aliante (HFGTY) non fa parte della
 dichiarazione: lo conferma l'OO al decollo (§4.3.1).

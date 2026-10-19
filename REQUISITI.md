@@ -7,9 +7,10 @@ Ogni volo va documentato con una traccia IGC di un logger approvato, firmata
 
 ## Controlli sul file IGC
 
-- **Intestazione**: nome **e** cognome del pilota (HFPLT), tipo di aliante
-  riconoscibile (HFGTY) e marche (HFGID). La sigla di gara (HFCID) è
-  facoltativa.
+- **Intestazione**: nome **e** cognome del pilota (HFPLT) e identificativo
+  dell'aliante: marche (HFGID) **oppure** sigla di gara (HFCID) (§1.1.3). Il
+  tipo di aliante (HFGTY) non fa parte della dichiarazione: se manca lo
+  conferma l'OO al decollo (§4.3.1).
 - **Registratore**: si distingue fra *Flight Recorder* approvato IGC e
   semplice *Position Recorder* (§2.2.6a: entrambi ammessi per Argento e Oro).
   È considerato Flight Recorder solo un logger con codice costruttore

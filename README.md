@@ -35,8 +35,9 @@ I riferimenti `§` sono al FAI Sporting Code Section 3 — Gliding, ed. 2025
 Il report ha una sezione *Documentazione* che non incide sull'esito delle tre
 prove:
 
-- **intestazione**: nome e cognome del pilota, tipo di aliante e marche; la
-  sigla di gara è facoltativa;
+- **intestazione**: nome e cognome del pilota e identificativo dell'aliante,
+  cioè marche **oppure** sigla di gara (§1.1.3); il tipo di aliante, se manca,
+  lo conferma l'OO (§4.3.1);
 - **registratore**: *Flight Recorder* approvato IGC solo se il codice
   costruttore del record A è fra quelli approvati (`rules.RECORDERS`), il
   G-record è presente e il modello è dichiarato, altrimenti *Position

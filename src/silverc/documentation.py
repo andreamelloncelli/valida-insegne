@@ -138,8 +138,13 @@ def check_pilot(flight: Flight) -> DocumentCheck:
 def check_glider_type(flight: Flight) -> DocumentCheck:
     value = flight.glider_type
     if _is_placeholder(value) or not any(c.isalpha() for c in value):
+        # Il tipo non fa parte della dichiarazione (§1.1.3): lo verifica l'OO.
         return DocumentCheck(
-            "Tipo di aliante", value or "n/d", False, "Tipo di aliante assente o non riconoscibile (HFGTY)."
+            "Tipo di aliante",
+            value or "n/d",
+            None,
+            "Tipo di aliante assente o non riconoscibile (HFGTY): non e' richiesto "
+            "nella dichiarazione, lo conferma l'OO al decollo (§4.3.1).",
         )
     return DocumentCheck(
         "Tipo di aliante", value, True, "Tipo di aliante dichiarato: va confrontato con l'aliante usato."
@@ -149,7 +154,21 @@ def check_glider_type(flight: Flight) -> DocumentCheck:
 def check_registration(flight: Flight) -> DocumentCheck:
     value = flight.registration
     if _is_placeholder(value):
-        return DocumentCheck("Marche", value or "n/d", False, "Marche dell'aliante assenti (HFGID).")
+        if not _is_placeholder(flight.competition_id):
+            return DocumentCheck(
+                "Marche",
+                "n/d",
+                True,
+                "Marche assenti (HFGID), ma basta la sigla di gara come identificativo "
+                "dell'aliante (§1.1.3).",
+            )
+        return DocumentCheck(
+            "Marche",
+            "n/d",
+            False,
+            "Identificativo dell'aliante assente: servono le marche (HFGID) o la sigla "
+            "di gara (HFCID) (§1.1.3).",
+        )
     if not _REGISTRATION.match(value.upper().replace(" ", "")):
         return DocumentCheck(
             "Marche",
@@ -163,8 +182,10 @@ def check_registration(flight: Flight) -> DocumentCheck:
 def check_competition_id(flight: Flight) -> DocumentCheck:
     value = flight.competition_id
     if _is_placeholder(value):
-        return DocumentCheck("Sigla di gara", "n/d", True, "Facoltativa, non indicata.")
-    return DocumentCheck("Sigla di gara", value, True, "Facoltativa, presente.")
+        return DocumentCheck(
+            "Sigla di gara", "n/d", True, "Non indicata: facoltativa se ci sono le marche."
+        )
+    return DocumentCheck("Sigla di gara", value, True, "Presente.")
 
 
 def check_headers(flight: Flight) -> list[DocumentCheck]:

@@ -173,16 +173,26 @@ def test_pilot_needs_name_and_surname(tmp_path):
     assert checks["Pilota"].ok is False
 
 
-def test_missing_glider_type_fails(tmp_path):
+def test_missing_glider_type_is_left_to_the_oo(tmp_path):
+    # §1.1.3: il tipo di aliante non fa parte della dichiarazione.
     checks = _checks(_flight(tmp_path, glider_type=""))
 
-    assert checks["Tipo di aliante"].ok is False
+    assert checks["Tipo di aliante"].ok is None
+    assert "§4.3.1" in checks["Tipo di aliante"].reason
 
 
-def test_missing_registration_fails(tmp_path):
+def test_missing_registration_and_competition_id_fails(tmp_path):
     checks = _checks(_flight(tmp_path, registration=""))
 
     assert checks["Marche"].ok is False
+
+
+def test_competition_id_replaces_missing_registration(tmp_path):
+    # §1.1.3: basta una fra marche e sigla di gara.
+    checks = _checks(_flight(tmp_path, registration="", competition_id="MR"))
+
+    assert checks["Marche"].ok is True
+    assert "§1.1.3" in checks["Marche"].reason
 
 
 def test_unusual_registration_is_flagged_not_failed(tmp_path):
