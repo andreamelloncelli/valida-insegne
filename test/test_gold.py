@@ -121,6 +121,19 @@ def test_missed_turnpoint_fails(tmp_path):
     assert "NON raggiunto" in " ".join(req.reasons)
 
 
+def test_declared_task_not_flown_is_not_accepted(tmp_path):
+    # Dichiarazione corretta e oltre i 300 km, ma la traccia non torna
+    # all'arrivo: la dichiarazione da sola non basta.
+    no_return = [(3000.0, 0.0), (0.0, 0.0), (165_000.0, 0.0), (100_000.0, 0.0)]
+    path = build_gold_flight(tmp_path / "g.igc", legs=no_return, declared=_DECLARED)
+    req, report = _requirement(path)
+
+    assert report.analysis.task_check.distance_m > GOLD.min_distance_m
+    assert req.verdict is Verdict.FAIL
+    assert [w.label for w in report.analysis.task_check.missed] == ["Arrivo"]
+    assert "effettivamente volato" in " ".join(req.reasons)
+
+
 def test_turnpoints_must_be_in_declared_order(tmp_path):
     # Percorso dichiarato con due virate, volate in ordine invertito.
     declared = [

@@ -8,6 +8,7 @@ import sys
 from datetime import datetime, timezone
 
 from silverc.analysis import analyse
+from silverc.documentation import RecorderKind
 from silverc.igc import IGCParseError, parse_igc
 from silverc.report import render
 from silverc.rules import BADGES
@@ -18,6 +19,12 @@ logger = logging.getLogger(__name__)
 EXIT_OK = 0
 EXIT_NOT_VALID = 1
 EXIT_ERROR = 2
+
+_RECORDER_CHOICES = {
+    "auto": None,
+    "fr": RecorderKind.FLIGHT_RECORDER,
+    "pr": RecorderKind.POSITION_RECORDER,
+}
 
 
 def _parse_release_time(value: str) -> datetime:
@@ -53,6 +60,13 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="usa la quota GNSS invece di quella barometrica (con penalizzazione)",
     )
+    parser.add_argument(
+        "--recorder",
+        choices=sorted(_RECORDER_CHOICES),
+        default="auto",
+        help="tipo di registratore: fr (Flight Recorder approvato IGC), pr (Position "
+        "Recorder, quota GNSS +100 m), auto (ricavato dal file; default)",
+    )
     parser.add_argument("-v", "--verbose", action="store_true", help="log di dettaglio su stderr")
     return parser
 
@@ -82,7 +96,12 @@ def main(argv: list[str] | None = None) -> int:
         first = flight.fixes[0].time
         release_time = release_time.replace(year=first.year, month=first.month, day=first.day)
 
-    analysis = analyse(flight, release_time=release_time, use_gnss_altitude=args.gnss_altitude)
+    analysis = analyse(
+        flight,
+        release_time=release_time,
+        use_gnss_altitude=args.gnss_altitude,
+        recorder_kind=_RECORDER_CHOICES[args.recorder],
+    )
     report = validate_badge(flight, analysis, BADGES[args.badge])
     sys.stdout.write(render(report) + "\n")
     return EXIT_OK if report.complete else EXIT_NOT_VALID

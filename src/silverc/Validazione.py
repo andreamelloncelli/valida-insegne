@@ -12,6 +12,7 @@ from pathlib import Path
 import streamlit as st
 
 from silverc.analysis import analyse
+from silverc.documentation import RecorderKind
 from silverc.igc import IGCParseError, parse_igc
 from silverc.report import render
 from silverc.rules import BADGES
@@ -29,6 +30,17 @@ st.title("Validatore insegne FAI da file IGC")
 st.caption("Il file caricato non viene salvato: resta in memoria/temporanea solo per l'analisi.")
 
 badge = st.selectbox("Insegna da verificare", options=sorted(BADGES), index=sorted(BADGES).index("argento"))
+_RECORDER_OPTIONS = {
+    "Ricava dal file": None,
+    RecorderKind.FLIGHT_RECORDER.value: RecorderKind.FLIGHT_RECORDER,
+    RecorderKind.POSITION_RECORDER.value: RecorderKind.POSITION_RECORDER,
+}
+recorder_choice = st.selectbox(
+    "Registratore di volo",
+    options=list(_RECORDER_OPTIONS),
+    help="Con un Position Recorder si usa la quota GNSS e il guadagno di quota "
+    "richiesto aumenta di 100 m.",
+)
 use_gnss_altitude = st.checkbox("Usa la quota GNSS invece di quella barometrica (con penalizzazione)")
 
 uploaded_file = st.file_uploader("Carica un file IGC", type=["igc"])
@@ -43,7 +55,11 @@ if uploaded_file is not None:
         except IGCParseError as exc:
             st.error(f"Errore: {exc}")
         else:
-            analysis = analyse(flight, use_gnss_altitude=use_gnss_altitude)
+            analysis = analyse(
+                flight,
+                use_gnss_altitude=use_gnss_altitude,
+                recorder_kind=_RECORDER_OPTIONS[recorder_choice],
+            )
             report = validate_badge(flight, analysis, BADGES[badge])
 
             satisfied = len(report.satisfied)
@@ -83,6 +99,18 @@ if uploaded_file is not None:
                     st.markdown("\n".join(f"- {m}" for m in requirement.method))
                     st.markdown("**Motivazione dell'esito**")
                     st.markdown("\n".join(f"- {r}" for r in requirement.reasons))
+
+            st.subheader("Documentazione del file IGC")
+            if analysis.recorder is not None:
+                recorder = analysis.recorder
+                st.markdown(
+                    f"**Registratore:** {recorder.kind.value} — costruttore "
+                    f"`{recorder.manufacturer}`, modello `{recorder.model}` ({recorder.source})"
+                )
+                st.markdown("\n".join(f"- {r}" for r in recorder.reasons))
+            for doc in report.documentation:
+                mark = "❔" if doc.ok is None else ("✅" if doc.ok else "❌")
+                st.markdown(f"{mark} **{doc.label}:** {doc.value} — {doc.reason}")
 
             if report.warnings:
                 st.subheader("Avvertenze")

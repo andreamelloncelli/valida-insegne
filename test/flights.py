@@ -29,14 +29,16 @@ def build_flight(
     with_enl: bool = False,
     enl_after_release: int = 0,
     with_g_record: bool = True,
+    **header: str,
 ) -> str:
     """Genera una traccia: rullaggio, traino, sgancio, veleggiamento, atterraggio.
 
     `altitude` riceve la frazione di veleggiamento trascorsa (0..1) e
-    restituisce la quota barometrica in metri.
+    restituisce la quota barometrica in metri. `header` sovrascrive i campi
+    d'intestazione di `IGCBuilder` (record A, pilota, aliante, marche...).
     """
     builder = IGCBuilder(
-        date_ddmmyy=date_ddmmyy, with_enl=with_enl, with_g_record=with_g_record
+        date_ddmmyy=date_ddmmyy, with_enl=with_enl, with_g_record=with_g_record, **header
     )
 
     for t in range(0, TAKEOFF_T, 20):

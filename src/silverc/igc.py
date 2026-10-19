@@ -64,6 +64,7 @@ class Flight:
     has_g_record: bool = False
     has_enl: bool = False
     source: str = ""
+    a_record: str = ""
 
     @property
     def glider(self) -> str:
@@ -76,9 +77,26 @@ class Flight:
         return self.headers.get("PLT", "").strip() or "n/d"
 
     @property
+    def glider_type(self) -> str:
+        return self.headers.get("GTY", "").strip()
+
+    @property
+    def registration(self) -> str:
+        return self.headers.get("GID", "").strip()
+
+    @property
+    def competition_id(self) -> str:
+        return self.headers.get("CID", "").strip()
+
+    @property
     def recorder(self) -> str:
         fty = self.headers.get("FTY", "").strip()
         return fty or "n/d"
+
+    @property
+    def manufacturer_code(self) -> str:
+        """Codice costruttore a 3 caratteri del record A (es. LXV, FLA, XCS)."""
+        return self.a_record[1:4].upper() if len(self.a_record) >= 4 else ""
 
 
 def _parse_header_date(line: str) -> date | None:
@@ -210,6 +228,7 @@ def parse_igc(path: str | Path) -> Flight:
     extensions: dict[str, tuple[int, int]] = {}
     flight_date: date | None = None
     has_g_record = False
+    a_record = ""
     c_records: list[str] = []
     fixes: list[Fix] = []
     rejected: list[tuple[int, str]] = []
@@ -220,7 +239,9 @@ def parse_igc(path: str | Path) -> Flight:
         if not line:
             continue
         rec = line[0].upper()
-        if rec == "H":
+        if rec == "A" and not a_record:
+            a_record = line.strip()
+        elif rec == "H":
             if line[1:5].upper() == "FDTE":
                 flight_date = _parse_header_date(line)
             code = line[2:5].upper()
@@ -258,8 +279,9 @@ def parse_igc(path: str | Path) -> Flight:
     task = _parse_c_records(c_records, flight_date)
     elapsed_ms = (time.perf_counter() - started) * 1000
     logger.debug(
-        "Parsed IGC: file=%s | fixes=%d, scartati=%d, data=%s, ENL=%s, G-record=%s | %.1fms",
+        "Parsed IGC: file=%s, logger=%s | fixes=%d, scartati=%d, data=%s, ENL=%s, G-record=%s | %.1fms",
         path.name,
+        a_record[1:4] or "n/d",
         len(kept),
         len(rejected),
         flight_date,
@@ -276,6 +298,7 @@ def parse_igc(path: str | Path) -> Flight:
         has_g_record=has_g_record,
         has_enl="ENL" in extensions,
         source=str(path),
+        a_record=a_record,
     )
 
 

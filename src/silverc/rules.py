@@ -46,8 +46,11 @@ class BadgeRules:
     # l'edizione in vigore applica un tetto massimo alla percentuale)
     max_loss_of_height_ratio: float = 0.01
 
-    # Penalita' applicata a tutti i requisiti di quota quando si usa la quota
-    # GNSS al posto di quella barometrica (ammesso solo per Silver/Gold). - TO VERIFY
+    # Maggiorazione della soglia di guadagno di quota quando si usa la quota
+    # GNSS: obbligatoria con un Position Recorder (art. 9.1 ammette i PR per
+    # Argento e Oro), non dovuta con un Flight Recorder approvato. Regola
+    # riferita da Maurizio; non compare nel Regolamento
+    # Insegne AeCI 2025. - TO VERIFY sul Sporting Code Sect. 3
     gnss_altitude_penalty_m: float = 100.0
 
     # Non regolamentare: soglia oltre la quale il verdetto e' MARGINAL perche'
@@ -94,6 +97,33 @@ class AnalysisParams:
     start_finish_zone_radius_m: float = 1_000.0
 
 
+@dataclass(frozen=True)
+class RecorderRules:
+    """Criteri per distinguere un Flight Recorder approvato da un Position Recorder."""
+
+    # Codici costruttore (record A, 3 caratteri) dei produttori di Flight
+    # Recorder approvati IGC: tabella "IGC-approved flight recorders -
+    # manufacturer codes" della IGC GNSS FR Technical Specification, 2nd
+    # edition with AL8 (2023), A2.5.6. Il codice identifica il produttore, non
+    # il modello: un produttore approvato puo' avere anche dispositivi non
+    # approvati, per cui serve anche il G-record e il modello va confrontato
+    # con https://www.fai.org/page/igc-approved-flight-recorders
+    approved_manufacturers: frozenset[str] = frozenset(
+        {
+            "ACT", "AVX", "CAM", "CNI", "DSX", "EWA", "FIL", "FLA", "FLY", "GCS",
+            "IMI", "LGS", "LXN", "LXV", "NAV", "NKL", "NTE", "PES", "PFE", "PRT",
+            "RCE", "SCH", "SDI", "TRI", "ZAN",
+        }
+    )
+
+    # A2.5.6, nota 2: il prefisso X designa un dispositivo non approvato IGC
+    # (XCSoar, XCTrack, app per smartphone...).
+    unapproved_prefix: str = "X"
+
+    # Valori di HFFTY che non identificano un dispositivo.
+    placeholder_types: frozenset[str] = frozenset({"", "N/D", "NKN", "UNKNOWN", "NONE"})
+
+
 SILVER = BadgeRules(name="argento")
 GOLD = BadgeRules(
     name="oro",
@@ -107,3 +137,4 @@ BADGES = {SILVER.name: SILVER, GOLD.name: GOLD}
 
 RULES = SILVER
 PARAMS = AnalysisParams()
+RECORDERS = RecorderRules()

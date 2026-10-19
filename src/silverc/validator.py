@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from silverc.analysis import FlightAnalysis
+from silverc.documentation import DocumentCheck, check_headers
 from silverc.igc import Flight
 from silverc.rules import GOLD, RULES, SILVER, BadgeRules
 
@@ -38,6 +39,7 @@ class ValidationReport:
     requirements: list[Requirement]
     warnings: list[str] = field(default_factory=list)
     badge: str = "argento"
+    documentation: list[DocumentCheck] = field(default_factory=list)
 
     @property
     def satisfied(self) -> list[Requirement]:
@@ -57,10 +59,20 @@ def _threshold_verdict(measured: float, required: float, band: float) -> Verdict
 
 
 def _height_threshold(base: float, analysis: FlightAnalysis) -> tuple[float, str | None]:
+    recorder = analysis.recorder
     if analysis.altitude_source.startswith("GNSS"):
+        why = (
+            "registratore trattato come Position Recorder"
+            if recorder is not None and not recorder.is_flight_recorder
+            else "quota GNSS al posto di quella barometrica"
+        )
         return base + RULES.gnss_altitude_penalty_m, (
-            f"Quota GNSS al posto di quella barometrica: soglia maggiorata di "
-            f"{RULES.gnss_altitude_penalty_m:.0f} m come margine d'errore."
+            f"Soglia maggiorata di {RULES.gnss_altitude_penalty_m:.0f} m ({why}): "
+            f"{base:.0f} + {RULES.gnss_altitude_penalty_m:.0f} m sulla quota GNSS."
+        )
+    if recorder is not None and recorder.is_flight_recorder:
+        return base, (
+            "Flight Recorder approvato: quota barometrica, soglia senza maggiorazione."
         )
     return base, None
 
@@ -114,7 +126,13 @@ def check_height_gain(analysis: FlightAnalysis, rules: BadgeRules = SILVER) -> R
         f"Quota di riferimento: {analysis.altitude_source}.",
     ]
     reasons: list[str] = []
-    if gain.low is not None and gain.high is not None:
+    if not analysis.altitude_usable:
+        verdict = Verdict.UNDETERMINED
+        reasons.append(
+            "Quota GNSS assente o costante: con un Position Recorder il guadagno "
+            "di quota si misura sulla quota GNSS, che il file non registra."
+        )
+    elif gain.low is not None and gain.high is not None:
         reasons.append(
             f"Punto basso {gain.low.time:%H:%M:%S} UTC, punto alto "
             f"{gain.high.time:%H:%M:%S} UTC: guadagno di {gain.gain_m:.0f} m "
@@ -148,8 +166,6 @@ def check_distance(analysis: FlightAnalysis, rules: BadgeRules = SILVER) -> Requ
         distance, rules.min_distance_m, band=rules.min_distance_m * RULES.marginal_ratio
     )
     max_loss = distance * RULES.max_loss_of_height_ratio
-    if analysis.altitude_source.startswith("GNSS"):
-        max_loss = max(0.0, max_loss - RULES.gnss_altitude_penalty_m)
     from_takeoff = analysis.distance_from_takeoff_m
     method = [
         "Punto d'arrivo: il fix piu' lontano dallo sgancio fra tutti quelli "
@@ -259,6 +275,12 @@ def check_declared_distance(analysis: FlightAnalysis, rules: BadgeRules = GOLD) 
             f"oltre il massimo di {rules.max_turnpoints}."
         )
 
+    if not check.completed:
+        reasons.append(
+            "Il percorso e' dichiarato correttamente ma la traccia non lo "
+            "documenta: la prova vale solo se ogni punto e' stato effettivamente "
+            "volato."
+        )
     for waypoint in check.waypoints:
         if waypoint.reached and waypoint.point is not None:
             reasons.append(
@@ -275,8 +297,6 @@ def check_declared_distance(analysis: FlightAnalysis, rules: BadgeRules = GOLD) 
             )
 
     max_loss = distance * RULES.max_loss_of_height_ratio
-    if analysis.altitude_source.startswith("GNSS"):
-        max_loss = max(0.0, max_loss - RULES.gnss_altitude_penalty_m)
     if check.completed and check.loss_of_height_m > max_loss:
         verdict = Verdict.FAIL
         reasons.append(
@@ -357,6 +377,7 @@ def validate_badge(
         requirements=requirements,
         warnings=warnings,
         badge=rules.name,
+        documentation=check_headers(flight),
     )
 
 

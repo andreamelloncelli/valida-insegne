@@ -8,6 +8,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 
+from silverc.documentation import RecorderInfo, RecorderKind, classify_recorder
 from silverc.igc import DeclaredTask, Fix, Flight, Waypoint
 from silverc.rules import PARAMS
 
@@ -65,6 +66,8 @@ class FlightAnalysis:
     max_enl: int | None
     notes: list[str]
     task_check: "TaskCheck | None" = None
+    recorder: RecorderInfo | None = None
+    altitude_usable: bool = True
 
     @property
     def duration_s(self) -> float:
@@ -347,14 +350,35 @@ def analyse(
     flight: Flight,
     release_time: datetime | None = None,
     use_gnss_altitude: bool = False,
+    recorder_kind: RecorderKind | None = None,
 ) -> FlightAnalysis:
-    """Calcola tutte le grandezze necessarie alla validazione."""
+    """Calcola tutte le grandezze necessarie alla validazione.
+
+    `recorder_kind` forza il tipo di registratore; se assente si ricava dal file.
+    """
     started = time.perf_counter()
     fixes = flight.fixes
     notes: list[str] = []
+    recorder = classify_recorder(flight, recorder_kind)
 
     baro = [f.pressure_alt for f in fixes if f.pressure_alt is not None]
-    if not use_gnss_altitude and (
+    gnss = [f.gnss_alt for f in fixes if f.gnss_alt is not None]
+    altitude_usable = True
+    if not use_gnss_altitude and not recorder.is_flight_recorder:
+        # La quota barometrica di un Position Recorder non e' calibrata: si usa
+        # la GNSS e la soglia di guadagno di quota viene maggiorata.
+        use_gnss_altitude = True
+        notes.append(
+            "Registratore trattato come Position Recorder: usata la quota GNSS "
+            "con la maggiorazione prevista sul guadagno di quota."
+        )
+        if not gnss or max(gnss) - min(gnss) < PARAMS.min_barometric_spread_m:
+            altitude_usable = False
+            notes.append(
+                "Quota GNSS assente o costante: con un Position Recorder il "
+                "guadagno di quota non e' determinabile."
+            )
+    elif not use_gnss_altitude and (
         not baro or max(baro) - min(baro) < PARAMS.min_barometric_spread_m
     ):
         use_gnss_altitude = True
@@ -428,6 +452,8 @@ def analyse(
             if flight.task is not None
             else None
         ),
+        recorder=recorder,
+        altitude_usable=altitude_usable,
     )
     logger.debug(
         "Analisi volo: fixes=%d, sgancio=%s (%s), atterraggio=%s | durata=%.0fs, "

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from silverc.documentation import DocumentCheck
 from silverc.validator import Requirement, ValidationReport, Verdict
 
 _MARKS = {
@@ -25,6 +26,12 @@ def _coords(point) -> str:
         f"{abs(fix.lat):.5f}{lat_hemi} {abs(fix.lon):.5f}{lon_hemi}"
         f"  quota {alt if alt is not None else 'n/d'} m"
     )
+
+
+def _document_mark(check: DocumentCheck) -> str:
+    if check.ok is None:
+        return "[??]"
+    return "[OK]" if check.ok else "[NO]"
 
 
 def _requirement_block(req: Requirement) -> list[str]:
@@ -66,6 +73,17 @@ def render(report: ValidationReport) -> str:
         f"Atterraggio  : {analysis.landing.time:%H:%M:%S}  {_coords(analysis.landing)}",
         f"Quota usata  : {analysis.altitude_source}",
     ]
+
+    lines += ["", "DOCUMENTAZIONE DEL FILE IGC", _rule()]
+    recorder = analysis.recorder
+    if recorder is not None:
+        lines.append(
+            f"Registratore : {recorder.kind.value} "
+            f"(costruttore {recorder.manufacturer}, {recorder.source})"
+        )
+        lines += [f"               - {r}" for r in recorder.reasons]
+    for doc in report.documentation:
+        lines.append(f"{_document_mark(doc)} {doc.label:<16}: {doc.value}  — {doc.reason}")
 
     if analysis.task_check is not None:
         check = analysis.task_check

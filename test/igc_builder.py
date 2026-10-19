@@ -29,6 +29,12 @@ class IGCBuilder:
     date_ddmmyy: str = "150625"
     with_enl: bool = False
     with_g_record: bool = True
+    a_record: str = "ALXV001"
+    pilot: str = "Mario Rossi"
+    glider_type: str = "ASK 21"
+    registration: str = "I-ABCD"
+    fr_type: str = "LXNAV,LX9000"
+    competition_id: str = ""
     lines: list[str] = field(default_factory=list)
     task: list[str] = field(default_factory=list)
 
@@ -69,13 +75,15 @@ class IGCBuilder:
 
     def render(self) -> str:
         head = [
-            "AXXX001 Synthetic logger",
+            self.a_record,
             f"HFDTEDATE:{self.date_ddmmyy},01",
-            "HFPLTPILOTINCHARGE:Mario Rossi",
-            "HFGTYGLIDERTYPE:ASK 21",
-            "HFGIDGLIDERID:I-ABCD",
-            "HFFTYFRTYPE:SYNTHETIC,TEST",
+            f"HFPLTPILOTINCHARGE:{self.pilot}",
+            f"HFGTYGLIDERTYPE:{self.glider_type}",
+            f"HFGIDGLIDERID:{self.registration}",
+            f"HFFTYFRTYPE:{self.fr_type}",
         ]
+        if self.competition_id:
+            head.append(f"HFCIDCOMPETITIONID:{self.competition_id}")
         if self.with_enl:
             head.append("I013638ENL")
         tail = ["GDEADBEEF"] if self.with_g_record else []
