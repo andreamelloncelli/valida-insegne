@@ -91,6 +91,9 @@ Presuppone l'insegna d'argento già conseguita.
     virate** (§1.4.2f): virate in qualsiasi ordine, anche solo alcune delle
     dichiarate, partenza dichiarata o sgancio, arrivo dichiarato o un fix.
     Per un'insegna non è mai inferiore ad andata e ritorno o triangolo;
+  - virate: settore a 90° di raggio illimitato o cilindro di 500 m; ogni
+    virata presa solo col cilindro toglie 1 km (§1.2.6, §1.3.6). Partenza e
+    arrivo: linee di 1 km perpendicolari alla tratta (§1.2.12);
   - vale la geometria con l'esito migliore, linea retta compresa (§2.2). Le
     distanze libere (§1.4.2i–l) valgono solo per i record.
 - **Perdita di quota** oltre i 100 km (§2.4.4): limite di **1000 m** (900 m

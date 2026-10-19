@@ -152,6 +152,35 @@ def test_start_crossed_only_before_release_is_explained(tmp_path):
     assert "prima dello sgancio" in reasons
 
 
+def test_turnpoint_reached_only_by_cylinder_costs_one_km(tmp_path):
+    # Andata e ritorno da 302,2 km con la virata presa 300 m prima: dentro il
+    # cilindro ma mai nel settore. Il §1.3.6 toglie 1 km: 301,2 km, che e'
+    # nella banda d'incertezza invece che SODDISFATTO.
+    declared = [
+        (0.0, 0.0, "DECOLLO"),
+        (0.0, 0.0, "PARTENZA"),
+        (150_850.0, 0.0, "VIRATA EST"),
+        (0.0, 0.0, "ARRIVO"),
+        (0.0, 0.0, "ATTERRAGGIO"),
+    ]
+    legs = [(3000.0, 0.0), (-2000.0, 0.0), (150_550.0, 0.0), (0.0, 0.0)]
+    path = build_gold_flight(tmp_path / "g.igc", legs=legs, declared=declared)
+    req, report = _requirement(path)
+    check = report.analysis.task_check
+
+    assert check.cylinder_correction_m == 1000
+    assert req.verdict is Verdict.MARGINAL
+    assert req.measured == f"{(check.distance_m - 1000) / 1000:.2f} km"
+    assert "§1.3.6" in " ".join(req.reasons)
+
+
+def test_turnpoint_reached_in_sector_has_no_correction(tmp_path):
+    path = build_gold_flight(tmp_path / "g.igc", legs=_OUT_AND_RETURN, declared=_DECLARED)
+    _, report = _requirement(path)
+
+    assert report.analysis.task_check.cylinder_correction_m == 0
+
+
 def test_missed_turnpoint_fails(tmp_path):
     # Il volo si ferma a 150 km: la virata dichiarata a 160 km non viene toccata.
     short = [(3000.0, 0.0), (-2000.0, 0.0), (150_000.0, 0.0), (0.0, 0.0)]

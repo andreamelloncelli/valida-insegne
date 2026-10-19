@@ -52,6 +52,13 @@ class BadgeRules:
     # approvato.
     gnss_altitude_penalty_m: float = 100.0
 
+    # §1.2.6: zona di osservazione della virata, cilindro di 500 m oppure
+    # settore a 90 gradi di raggio illimitato. §1.3.6: ogni virata raggiunta
+    # solo col cilindro toglie 1 km alla distanza ufficiale.
+    turnpoint_cylinder_m: float = 500.0
+    sector_angle_deg: float = 90.0
+    cylinder_correction_m: float = 1_000.0
+
     # §1.2.12: linee di partenza e d'arrivo lunghe 1 km, centrate sul punto e
     # perpendicolari alla prima o all'ultima tratta.
     start_finish_line_m: float = 1_000.0
@@ -100,10 +107,6 @@ class AnalysisParams:
     # piu' vicino, oltre la quale il dato non e' considerato affidabile.
     max_release_time_mismatch_s: float = 120.0
 
-    # Zona di osservazione delle virate. Il cilindro da 500 m e' una delle due
-    # zone del §1.2.6; l'altra, il settore a 90 gradi di raggio illimitato,
-    # non e' ancora gestita (vedi Audit 3, OK8).
-    turnpoint_zone_radius_m: float = 500.0
 
 
 @dataclass(frozen=True)

@@ -34,10 +34,10 @@ percorsi chiusi hanno partenza e arrivo con coordinate identiche (§1.2.11).
 | OK5 | Partenze e arrivi ammessi secondo il percorso | §1.4.4 | ✅ |
 | OK6 | Linee di partenza e d'arrivo da 1 km perpendicolari alla tratta | §1.2.12, §1.3.1a, §1.3.2b | ✅ |
 | OK7 | Quota al passaggio della linea interpolata fra i due fix | §2.4.3b | ✅ |
-| OK8 | Zone di virata: cilindro da 500 m **o** settore a 90° di raggio illimitato | §1.2.6 | 🟡 |
-| OK9 | −1 km per ogni virata raggiunta solo col cilindro | §1.3.6 | ❌ |
+| OK8 | Zone di virata: cilindro da 500 m **o** settore a 90° di raggio illimitato | §1.2.6 | ✅ |
+| OK9 | −1 km per ogni virata raggiunta solo col cilindro | §1.3.6 | ✅ |
 | OK10 | Virata raggiunta anche se il segmento fra due fix attraversa la zona | §2.4.2c | ✅ |
-| OK11 | Distanza ufficiale = percorso − correzioni zona − penalità di quota | §1.3.7 | 🟡 |
+| OK11 | Distanza ufficiale = percorso − correzioni zona − penalità di quota | §1.3.7 | ✅ |
 | OK12 | Percorso chiuso: partenza e arrivo con le stesse coordinate | §1.2.11 | ✅ |
 | OK13 | Percorso dichiarato non completato: ripiego sulla linea retta | §2.2, §1.4.4 | ✅ |
 | OK14 | Sgancio prima della partenza, indicato nel report | Maurizio | ✅ |
@@ -88,7 +88,11 @@ verrebbero penalizzati a torto.
 > 300,5 km ⇒ **SODDISFATTO**. SC3: 300,5 − 3 = 297,5 km ⇒ **NON SODDISFATTO**.
 
 Il commento in `rules.py` parla di un settore di raggio 3 km: lo SC3 2025 lo vuole
-illimitato.
+illimitato. Risolto in `course._TurnpointZones`: il settore è orientato sulle tratte
+rivendicate (asse opposto alla bisettrice fra tratta in entrata e in uscita) e ogni virata
+raggiunta solo col cilindro toglie 1 km. Quando l'orientamento non è determinato (arrivo a
+un fix scelto dopo il volo, virata in linea retta, tratta nulla) vale solo il cilindro,
+come chiede il §4.3.4b.
 
 **OK10 — Attraversamento fra due fix.** Il codice esige un fix dentro la zona. Con fix
 radi un passaggio reale può risultare mancato: il codice è troppo severo. Risolto in
@@ -96,7 +100,7 @@ radi un passaggio reale può risultare mancato: il codice è troppo severo. Riso
 
 **OK11 — Distanza ufficiale.** Somma la correzione delle zone (OK9) e la penalità di
 perdita di quota (GK1) sul percorso dichiarato. La geometria si sceglie già sulla distanza
-ufficiale con la penalità di quota; manca la correzione delle zone, che arriva con OK9.
+ufficiale con la penalità di quota e la correzione delle zone. Risolto.
 
 **OK12 — Percorso chiuso.** Risolto: un percorso è chiuso solo se partenza e arrivo hanno
 le stesse coordinate (`course.is_closed`); se distano meno di 1 km ma non coincidono il

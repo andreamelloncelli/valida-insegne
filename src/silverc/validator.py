@@ -317,8 +317,14 @@ def check_declared_distance(analysis: FlightAnalysis, rules: BadgeRules = GOLD) 
         "volo (tabella §1.4.4). Vale la geometria con la distanza ufficiale "
         "migliore (§2.2); per un'insegna non e' mai inferiore ad andata e ritorno "
         "o triangolo sullo stesso volo.",
-        "Distanza ufficiale: tratte fra i punti rivendicati, meno la correzione "
-        "per la perdita di quota (§1.3.7).",
+        "Virate: zona di osservazione a settore di 90 gradi con raggio illimitato, "
+        "orientato sulle tratte rivendicate, oppure cilindro di 500 m (§1.2.6); "
+        "basta un fix nella zona o un segmento fra due fix che la attraversa "
+        "(§2.4.2c). Se l'orientamento del settore non e' determinato (arrivo a un "
+        "fix, virata in linea retta) vale solo il cilindro.",
+        "Distanza ufficiale: tratte fra i punti rivendicati, meno 1 km per ogni "
+        "virata raggiunta solo col cilindro (§1.3.6) e meno la correzione per la "
+        "perdita di quota (§1.3.7).",
         _loss_of_height_method(_uses_gnss(analysis)),
     ]
     check = analysis.task_check
@@ -343,7 +349,9 @@ def check_declared_distance(analysis: FlightAnalysis, rules: BadgeRules = GOLD) 
         if check.completed
         else None
     )
-    distance = loss.official_m if loss is not None else check.distance_m
+    distance = (
+        loss.official_m - check.cylinder_correction_m if loss is not None else check.distance_m
+    )
     verdict = _threshold_verdict(
         distance, rules.min_distance_m, band=rules.min_distance_m * RULES.marginal_ratio
     )
@@ -410,6 +418,12 @@ def check_declared_distance(analysis: FlightAnalysis, rules: BadgeRules = GOLD) 
         if loss.invalid:
             verdict = Verdict.FAIL
         reasons.append(_loss_of_height_reason(loss))
+        if check.cylinder_correction_m:
+            reasons.append(
+                f"Correzione di {check.cylinder_correction_m / 1000:.0f} km per le virate "
+                f"raggiunte solo col cilindro (§1.3.6): distanza ufficiale "
+                f"{distance / 1000:.2f} km."
+            )
 
     return Requirement(
         code="distanza",

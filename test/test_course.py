@@ -12,6 +12,8 @@ from silverc.course import (
     classify_course,
     is_closed,
     line_crossings,
+    sector_axis,
+    sector_indices,
     turnpoint_indices,
 )
 from silverc.igc import DeclaredTask, Fix, Waypoint
@@ -102,3 +104,28 @@ def test_segment_missing_the_zone_does_not_count():
     fixes = [_fix(0, -1000, 700, 1000), _fix(60, 1000, 700, 1000)]
 
     assert turnpoint_indices(fixes, tp, 0, 1) == []
+
+
+def test_out_and_return_sector_points_away_from_home():
+    tp = Waypoint(45.0, 9.0, "VIRATA")
+    home = Waypoint(45.0, 8.0, "CASA")
+    axis = sector_axis(tp, home, home)
+
+    assert axis == pytest.approx((1.0, 0.0), abs=1e-6)
+
+
+def test_straight_through_turnpoint_has_no_sector():
+    tp = Waypoint(45.0, 9.0, "VIRATA")
+
+    assert sector_axis(tp, Waypoint(45.0, 8.0, "OVEST"), Waypoint(45.0, 10.0, "EST")) is None
+
+
+def test_sector_has_unlimited_radius():
+    # Andata e ritorno verso est: il settore si apre a est della virata.
+    tp = Waypoint(45.0, 9.0, "VIRATA")
+    home = Waypoint(45.0, 8.0, "CASA")
+    far_beyond = [_fix(0, 4000, -200, 1000), _fix(60, 5000, 200, 1000)]
+    beside = [_fix(0, -200, 5000, 1000), _fix(60, 200, 5000, 1000)]
+
+    assert sector_indices(far_beyond, tp, home, home, 0, 1) == [0, 1]
+    assert sector_indices(beside, tp, home, home, 0, 1) == []

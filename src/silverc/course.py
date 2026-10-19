@@ -19,7 +19,7 @@ from silverc.geo import (
     loss_of_height,
 )
 from silverc.igc import DeclaredTask, Fix, Waypoint
-from silverc.rules import PARAMS, RULES
+from silverc.rules import RULES
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +96,8 @@ class TaskCheck:
     start_before_release: bool = False
     # Virate dichiarate ma non usate nella geometria valutata (§1.4.2f).
     unused: list[Waypoint] = field(default_factory=list)
+    # Correzione per le virate raggiunte solo col cilindro (§1.3.6).
+    cylinder_correction_m: float = 0.0
 
     @property
     def completed(self) -> bool:
@@ -192,40 +194,141 @@ def line_crossings(
     return crossings
 
 
-def _segment_distance(origin: Waypoint, a: Fix, b: Fix) -> float:
-    """Distanza minima da `origin` del segmento fra due fix, nel piano locale."""
-    ax, ay = _local_xy(origin, a.lat, a.lon)
-    bx, by = _local_xy(origin, b.lat, b.lon)
-    dx, dy = bx - ax, by - ay
-    span = dx * dx + dy * dy
-    t = 0.0 if span == 0 else max(0.0, min(1.0, -(ax * dx + ay * dy) / span))
-    return math.hypot(ax + t * dx, ay + t * dy)
+Neighbors = tuple[Waypoint | None, Waypoint | None]
+
+
+def sector_axis(tp: Waypoint, previous: Waypoint, following: Waypoint) -> tuple[float, float] | None:
+    """Asse del settore: opposto alla bisettrice fra tratta in entrata e in uscita (§1.2.6b).
+
+    Restituisce None quando l'orientamento non e' determinato: tratte di
+    lunghezza nulla o virata in linea retta, dove la bisettrice ammette due
+    versi. In quei casi vale solo il cilindro (§4.3.4b).
+    """
+    ax, ay = _local_xy(tp, previous.lat, previous.lon)
+    bx, by = _local_xy(tp, following.lat, following.lon)
+    la, lb = math.hypot(ax, ay), math.hypot(bx, by)
+    if la < 1.0 or lb < 1.0:
+        return None
+    sx, sy = ax / la + bx / lb, ay / la + by / lb
+    norm = math.hypot(sx, sy)
+    if norm < 1e-6:
+        return None
+    return -sx / norm, -sy / norm
+
+
+def _cross(ux: float, uy: float, vx: float, vy: float) -> float:
+    return ux * vy - uy * vx
+
+
+def _segment_hits_ray(
+    a: tuple[float, float], b: tuple[float, float], ray: tuple[float, float]
+) -> bool:
+    """Il segmento a-b tocca la semiretta dall'origine in direzione `ray`?"""
+    ex, ey = b[0] - a[0], b[1] - a[1]
+    denominator = _cross(ex, ey, ray[0], ray[1])
+    if abs(denominator) < 1e-9:
+        return False
+    t = -_cross(a[0], a[1], ray[0], ray[1]) / denominator
+    along = _cross(a[0], a[1], ex, ey) / -denominator
+    return 0.0 <= t <= 1.0 and along >= 0.0
+
+
+class _TurnpointZones:
+    """Indici dei fix che raggiungono ogni zona di osservazione (§1.2.6, §2.4.2c).
+
+    Un fix dentro la zona o un segmento fra due fix consecutivi che la
+    attraversa: con fix radi un passaggio reale cadrebbe altrimenti fra due
+    fix esterni. In quel caso conta il secondo fix. Le coordinate piane dei
+    fix attorno a ogni virata si calcolano una volta sola.
+    """
+
+    def __init__(self, fixes: list[Fix], start: int, end: int) -> None:
+        self._fixes = fixes
+        self._start = start
+        self._end = end
+        self._xy: dict[tuple[float, float], list[tuple[float, float]]] = {}
+        self._cylinders: dict[tuple[float, float], list[int]] = {}
+        self._sectors: dict[tuple, list[int]] = {}
+
+    def _points(self, tp: Waypoint) -> list[tuple[float, float]]:
+        key = (tp.lat, tp.lon)
+        if key not in self._xy:
+            self._xy[key] = [
+                _local_xy(tp, fix.lat, fix.lon) for fix in self._fixes[self._start : self._end + 1]
+            ]
+        return self._xy[key]
+
+    def cylinder(self, tp: Waypoint) -> list[int]:
+        key = (tp.lat, tp.lon)
+        if key not in self._cylinders:
+            radius = RULES.turnpoint_cylinder_m
+            points = self._points(tp)
+            indices: list[int] = []
+            for offset, (x, y) in enumerate(points):
+                inside = math.hypot(x, y) <= radius
+                if not inside and offset > 0:
+                    px, py = points[offset - 1]
+                    dx, dy = x - px, y - py
+                    span = dx * dx + dy * dy
+                    t = 0.0 if span == 0 else max(0.0, min(1.0, -(px * dx + py * dy) / span))
+                    inside = math.hypot(px + t * dx, py + t * dy) <= radius
+                if inside:
+                    indices.append(self._start + offset)
+            self._cylinders[key] = indices
+        return self._cylinders[key]
+
+    def sector(self, tp: Waypoint, neighbors: Neighbors) -> list[int]:
+        previous, following = neighbors
+        if previous is None or following is None:
+            return []
+        key = (tp.lat, tp.lon, previous.lat, previous.lon, following.lat, following.lon)
+        if key not in self._sectors:
+            axis = sector_axis(tp, previous, following)
+            self._sectors[key] = [] if axis is None else self._scan_sector(tp, axis)
+        return self._sectors[key]
+
+    def _scan_sector(self, tp: Waypoint, axis: tuple[float, float]) -> list[int]:
+        half = math.radians(RULES.sector_angle_deg / 2)
+        cos_half = math.cos(half)
+        rays = [
+            (
+                axis[0] * math.cos(angle) - axis[1] * math.sin(angle),
+                axis[0] * math.sin(angle) + axis[1] * math.cos(angle),
+            )
+            for angle in (half, -half)
+        ]
+        points = self._points(tp)
+        indices: list[int] = []
+        for offset, (x, y) in enumerate(points):
+            radius = math.hypot(x, y)
+            inside = radius == 0 or (x * axis[0] + y * axis[1]) / radius >= cos_half - 1e-12
+            if not inside and offset > 0:
+                inside = any(_segment_hits_ray(points[offset - 1], (x, y), ray) for ray in rays)
+            if inside:
+                indices.append(self._start + offset)
+        return indices
+
+    def union(self, tp: Waypoint, neighbors: Neighbors) -> list[int]:
+        sector = self.sector(tp, neighbors)
+        cylinder = self.cylinder(tp)
+        return sorted(set(cylinder) | set(sector)) if sector else cylinder
+
+    def sector_used(self, tp: Waypoint, neighbors: Neighbors, low: int, high: int) -> bool:
+        """La traccia entra nel settore fra `low` e `high` inclusi?"""
+        found = _first_after(self.sector(tp, neighbors), low)
+        return found is not None and found <= high
 
 
 def turnpoint_indices(fixes: list[Fix], waypoint: Waypoint, start: int, end: int) -> list[int]:
-    """Indici dei fix con cui la virata e' raggiunta (§2.4.2c).
+    """Indici dei fix che raggiungono il cilindro della virata (§1.2.6a, §2.4.2c)."""
+    return _TurnpointZones(fixes, start, end).cylinder(waypoint)
 
-    Basta un fix dentro la zona di osservazione o un segmento fra due fix
-    consecutivi che la attraversa: con fix radi un passaggio reale cadrebbe
-    altrimenti fra due fix esterni. In quel caso conta il secondo fix.
-    """
-    radius = PARAMS.turnpoint_zone_radius_m
-    indices: list[int] = []
-    previous: float | None = None
-    for i in range(start, end + 1):
-        distance = fast_distance_ll(waypoint.lat, waypoint.lon, fixes[i].lat, fixes[i].lon)
-        if distance <= radius:
-            indices.append(i)
-        elif previous is not None:
-            span = fast_distance_ll(fixes[i - 1].lat, fixes[i - 1].lon, fixes[i].lat, fixes[i].lon)
-            # Un segmento non puo' avvicinarsi al punto piu' di quanto dica la
-            # disuguaglianza triangolare: si evita il calcolo quasi sempre.
-            if min(distance, previous) - span <= radius and (
-                _segment_distance(waypoint, fixes[i - 1], fixes[i]) <= radius
-            ):
-                indices.append(i)
-        previous = distance
-    return indices
+
+def sector_indices(
+    fixes: list[Fix], tp: Waypoint, previous: Waypoint, following: Waypoint, start: int, end: int
+) -> list[int]:
+    """Indici dei fix che raggiungono il settore della virata (§1.2.6b, §2.4.2c)."""
+    return _TurnpointZones(fixes, start, end).sector(tp, (previous, following))
 
 
 def _first_after(indices: list[int], cursor: int) -> int | None:
@@ -254,8 +357,13 @@ def _line_zone() -> str:
     return f"linea di {RULES.start_finish_line_m:.0f} m"
 
 
-def _cylinder_zone() -> str:
-    return f"cilindro di {PARAMS.turnpoint_zone_radius_m:.0f} m"
+def _turnpoint_zone(by_sector: bool) -> str:
+    if by_sector:
+        return f"settore a {RULES.sector_angle_deg:.0f} gradi"
+    return (
+        f"solo cilindro di {RULES.turnpoint_cylinder_m:.0f} m: "
+        f"-{RULES.cylinder_correction_m / 1000:.0f} km (§1.3.6)"
+    )
 
 
 def _crossed(waypoint: Waypoint, label: str, crossing: Crossing) -> WaypointCheck:
@@ -306,6 +414,15 @@ def _loss(waypoints: list[WaypointCheck]) -> float:
     return float(start - finish) if start is not None and finish is not None else 0.0
 
 
+def _windows(indices: list[int]) -> list[tuple[int, int]]:
+    """Per ogni virata, l'intervallo fra il passaggio precedente e il successivo.
+
+    `indices` contiene partenza, virate e arrivo; una virata mancata vale -1 e
+    il suo intervallo non conta.
+    """
+    return [(indices[k - 1], indices[k + 1]) for k in range(1, len(indices) - 1)]
+
+
 def _verify_in_order(
     fixes: list[Fix],
     task: DeclaredTask,
@@ -324,22 +441,41 @@ def _verify_in_order(
     )
     first_start = start_line[0] if start_line else None
     cursor = first_start.point.index if first_start else release.index
+    zones = _TurnpointZones(fixes, release.index, last_index)
+    neighbors = [(points[k], points[k + 2]) for k in range(len(task.turnpoints))]
 
-    turnpoints: list[WaypointCheck] = []
-    passages: list[int] = []
-    for number, waypoint in enumerate(task.turnpoints, start=1):
-        label = f"Virata {number}"
-        zone = turnpoint_indices(fixes, waypoint, cursor, last_index)
-        if not zone:
-            turnpoints.append(_missed(fixes, waypoint, label, _cylinder_zone(), cursor, last_index))
-            continue
-        turnpoints.append(
-            _at_fix(waypoint, label, Point(zone[0], fixes[zone[0]]), _cylinder_zone(), use_gnss)
-        )
-        passages.append(zone[0])
-        cursor = zone[0]
+    found: list[int | None] = []
+    search_from = cursor
+    for waypoint, around in zip(task.turnpoints, neighbors):
+        index = _first_after(zones.union(waypoint, around), search_from)
+        found.append(index)
+        if index is not None:
+            cursor, search_from = index, index + 1
+    passages = [index for index in found if index is not None]
 
     finish = _first_crossing_after(finish_line, cursor + 1)
+    windows = _windows(
+        [first_start.point.index if first_start else release.index]
+        + [index if index is not None else -1 for index in found]
+        + [finish.point.index if finish else last_index]
+    )
+    turnpoints: list[WaypointCheck] = []
+    cylinder_only = 0
+    for number, (waypoint, around, index, window) in enumerate(
+        zip(task.turnpoints, neighbors, found, windows), start=1
+    ):
+        label = f"Virata {number}"
+        if index is None:
+            turnpoints.append(
+                _missed(fixes, waypoint, label, _turnpoint_zone(False), release.index, last_index)
+            )
+            continue
+        by_sector = zones.sector_used(waypoint, around, *window)
+        cylinder_only += not by_sector
+        turnpoints.append(
+            _at_fix(waypoint, label, Point(index, fixes[index]), _turnpoint_zone(by_sector), use_gnss)
+        )
+
     # Vale l'ultimo attraversamento della partenza prima della prima virata
     # (o dell'arrivo, in una meta).
     limit = passages[0] if passages else (finish.point.index if finish else last_index)
@@ -368,6 +504,7 @@ def _verify_in_order(
         declared_course=declared,
         closed=is_closed(task),
         start_before_release=start_before_release,
+        cylinder_correction_m=cylinder_only * RULES.cylinder_correction_m,
     )
 
 
@@ -413,13 +550,14 @@ def _three_tp_candidates(
     Le virate si girano in qualsiasi ordine e se ne possono rivendicare una,
     due o tre fra le dichiarate; si parte dalla linea di partenza dichiarata o
     dallo sgancio e si arriva alla linea d'arrivo dichiarata o a un fix
-    (tabella §1.4.4). Le linee sono perpendicolari alla prima e all'ultima
-    tratta rivendicate, quindi cambiano con la sequenza.
+    (tabella §1.4.4). Linee e settori seguono le tratte rivendicate, quindi
+    cambiano con la sequenza. Con l'arrivo a un fix scelto dopo il volo la
+    tratta finale non e' nota in anticipo: per l'ultima virata vale solo il
+    cilindro (§4.3.4b).
     """
     last_index = min(end_index, len(fixes) - 1)
-    tp_zones = [
-        turnpoint_indices(fixes, tp, release.index, last_index) for tp in task.turnpoints
-    ]
+    zones = _TurnpointZones(fixes, release.index, last_index)
+    release_waypoint = _fix_waypoint(release, "SGANCIO")
     start_lines: dict[int, list[Crossing]] = {}
     finish_lines: dict[int, list[Crossing]] = {}
     declared = classify_course(task)
@@ -441,82 +579,117 @@ def _three_tp_candidates(
                 )
             for from_release in (True, False):
                 if from_release:
-                    cursor = release.index
+                    origin, cursor = release_waypoint, release.index
                 else:
                     first_start = _first_crossing_after(start_lines[first], release.index)
                     if first_start is None:
                         continue
-                    cursor = first_start.point.index
-                passages: list[int] = []
-                search_from = cursor
-                for tp in sequence:
-                    found = _first_after(tp_zones[tp], search_from)
-                    if found is None:
-                        break
-                    passages.append(found)
-                    cursor, search_from = found, found + 1
-                if len(passages) < len(sequence):
-                    continue
-                if from_release:
-                    start_check = _at_fix(
-                        _fix_waypoint(release, "SGANCIO"), "Sgancio", release, "sgancio", use_gnss
+                    origin, cursor = task.start, first_start.point.index
+                for to_line in (True, False):
+                    route = [origin, *turnpoints, task.finish if to_line else None]
+                    neighbors = [(route[k], route[k + 2]) for k in range(len(turnpoints))]
+                    passages: list[int] = []
+                    search_from = cursor
+                    for waypoint, around in zip(turnpoints, neighbors):
+                        index = _first_after(zones.union(waypoint, around), search_from)
+                        if index is None:
+                            break
+                        passages.append(index)
+                        search_from = index + 1
+                    if len(passages) < len(turnpoints):
+                        continue
+                    candidate = _three_tp_candidate(
+                        fixes, task, release, last_index, use_gnss, zones, declared,
+                        sequence, neighbors, passages, from_release,
+                        start_lines[first], finish_lines[last] if to_line else None,
                     )
-                else:
-                    start = _last_crossing_until(start_lines[first], passages[0])
-                    start_check = _crossed(task.start, "Partenza", start)
-                prefix = _path_m(
-                    [(start_check.waypoint.lat, start_check.waypoint.lon)]
-                    + [(w.lat, w.lon) for w in turnpoints]
-                )
-                tp_checks = [
-                    _at_fix(w, f"Virata {k}", Point(i, fixes[i]), _cylinder_zone(), use_gnss)
-                    for k, (w, i) in enumerate(zip(turnpoints, passages), start=1)
-                ]
-
-                finish_checks: list[WaypointCheck] = []
-                finish = _first_crossing_after(finish_lines[last], cursor + 1)
-                if finish is not None:
-                    finish_checks.append(_crossed(task.finish, "Arrivo", finish))
-                if cursor < last_index:
-                    fix_point = _best_finish_fix(
-                        fixes, turnpoints[-1], prefix, start_check.altitude_m,
-                        cursor + 1, last_index, use_gnss,
-                    )
-                    finish_checks.append(
-                        _at_fix(
-                            _fix_waypoint(fix_point, "FIX"), "Fix d'arrivo", fix_point,
-                            "fix scelto dopo il volo", use_gnss,
-                        )
-                    )
-
-                for finish_check in finish_checks:
-                    waypoints = [start_check, *tp_checks, finish_check]
-                    candidates.append(
-                        TaskCheck(
-                            task=task,
-                            waypoints=waypoints,
-                            distance_m=prefix
-                            + geodesic_distance_ll(
-                                turnpoints[-1].lat,
-                                turnpoints[-1].lon,
-                                finish_check.waypoint.lat,
-                                finish_check.waypoint.lon,
-                            ),
-                            loss_of_height_m=_loss(waypoints),
-                            course=CourseType.THREE_TP,
-                            declared_course=declared,
-                            closed=is_closed(task),
-                            unused=[
-                                w for k, w in enumerate(task.turnpoints) if k not in sequence
-                            ],
-                        )
-                    )
+                    if candidate is not None:
+                        candidates.append(candidate)
     return candidates
+
+
+def _three_tp_candidate(
+    fixes: list[Fix],
+    task: DeclaredTask,
+    release: Point,
+    last_index: int,
+    use_gnss: bool,
+    zones: _TurnpointZones,
+    declared: CourseType,
+    sequence: tuple[int, ...],
+    neighbors: list[Neighbors],
+    passages: list[int],
+    from_release: bool,
+    start_line: list[Crossing],
+    finish_line: list[Crossing] | None,
+) -> TaskCheck | None:
+    """Una sequenza di virate gia' raggiunte, con la sua partenza e il suo arrivo."""
+    turnpoints = [task.turnpoints[tp] for tp in sequence]
+    if from_release:
+        start_check = _at_fix(
+            _fix_waypoint(release, "SGANCIO"), "Sgancio", release, "sgancio", use_gnss
+        )
+        start_index = release.index
+    else:
+        start = _last_crossing_until(start_line, passages[0])
+        start_check = _crossed(task.start, "Partenza", start)
+        start_index = start.point.index
+    prefix = _path_m(
+        [(start_check.waypoint.lat, start_check.waypoint.lon)]
+        + [(w.lat, w.lon) for w in turnpoints]
+    )
+
+    if finish_line is not None:
+        finish = _first_crossing_after(finish_line, passages[-1] + 1)
+        if finish is None:
+            return None
+        finish_check = _crossed(task.finish, "Arrivo", finish)
+        finish_index = finish.point.index
+    else:
+        if passages[-1] >= last_index:
+            return None
+        fix_point = _best_finish_fix(
+            fixes, turnpoints[-1], prefix, start_check.altitude_m,
+            passages[-1] + 1, last_index, use_gnss,
+        )
+        finish_check = _at_fix(
+            _fix_waypoint(fix_point, "FIX"), "Fix d'arrivo", fix_point,
+            "fix scelto dopo il volo", use_gnss,
+        )
+        finish_index = fix_point.index
+
+    windows = _windows([start_index, *passages, finish_index])
+    tp_checks: list[WaypointCheck] = []
+    cylinder_only = 0
+    for k, (waypoint, around, index, window) in enumerate(
+        zip(turnpoints, neighbors, passages, windows), start=1
+    ):
+        by_sector = zones.sector_used(waypoint, around, *window)
+        cylinder_only += not by_sector
+        tp_checks.append(
+            _at_fix(waypoint, f"Virata {k}", Point(index, fixes[index]), _turnpoint_zone(by_sector), use_gnss)
+        )
+    waypoints = [start_check, *tp_checks, finish_check]
+    return TaskCheck(
+        task=task,
+        waypoints=waypoints,
+        distance_m=prefix
+        + geodesic_distance_ll(
+            turnpoints[-1].lat, turnpoints[-1].lon,
+            finish_check.waypoint.lat, finish_check.waypoint.lon,
+        ),
+        loss_of_height_m=_loss(waypoints),
+        course=CourseType.THREE_TP,
+        declared_course=declared,
+        closed=is_closed(task),
+        unused=[w for k, w in enumerate(task.turnpoints) if k not in sequence],
+        cylinder_correction_m=cylinder_only * RULES.cylinder_correction_m,
+    )
 
 
 def _official_key(check: TaskCheck, use_gnss: bool) -> tuple[bool, float]:
     result = loss_of_height(check.distance_m, check.loss_of_height_m, use_gnss)
-    return not result.invalid, result.official_m
+    return not result.invalid, result.official_m - check.cylinder_correction_m
 
 
 def verify_declared_task(

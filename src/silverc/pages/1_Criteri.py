@@ -101,6 +101,9 @@ Presuppone l'insegna d'argento già conseguita.
   fino a 3 virate (§1.4.2f): virate in qualsiasi ordine, anche solo alcune,
   partenza dichiarata o sgancio, arrivo dichiarato o un fix. Vale la
   geometria con l'esito migliore, linea retta compresa (§2.2).
+- Virate: settore a 90° di raggio illimitato o cilindro di 500 m; ogni
+  virata presa solo col cilindro toglie 1 km (§1.2.6, §1.3.6). Partenza e
+  arrivo: linee di 1 km perpendicolari alla tratta (§1.2.12).
 - **Perdita di quota** oltre i 100 km (§2.4.4): limite di **1000 m**
   (900 m con quota GNSS); ogni metro in eccesso toglie 100 m alla
   distanza. 2000 m di perdita su 300 km lasciano 200 km.
