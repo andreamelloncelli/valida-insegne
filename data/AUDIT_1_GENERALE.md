@@ -36,7 +36,7 @@ Codici: **T** trasversali, **D** durata, **Q** guadagno di quota, **K** distanza
 | GT9 | Identificativo dell'aliante: marche **oppure** sigla di gara | §1.1.3 | ✅ |
 | GT10 | Pilota o marche mancanti o errati: correggibili con certificato dell'OO | §2.3b, §4.4.2c | ✅ |
 | GT11 | Dichiarazione pre-volo (anche via internet, se ammessa dalla NAC) | §1.1.4, §2.3a | ✅ |
-| GT12 | Distanze sull'ellissoide WGS84 | §1.3.7 | 🟡 |
+| GT12 | Distanze sull'ellissoide WGS84 | §1.3.7 | ✅ |
 | GT13 | Imprecisioni di misura al massimo svantaggio del pilota | §4.3.4b | 🟡 |
 | GT14 | Firma del file (G-record) verificata col programma IGC | §4.3.4a | 🟡 |
 | GT15 | Versione hardware del registratore (HFRHW) nel report | Maurizio | ❌ |
@@ -103,7 +103,8 @@ pagina web, e il report ricorda cosa allegare.
 
 **GT12 — WGS84.** `geographiclib` è già una dipendenza obbligatoria, quindi di norma il
 calcolo è conforme. Resta però il ripiego sulla sfera FAI se la libreria manca, che lo SC3
-non ammette più: va tolto, o in quel caso va bloccato il verdetto.
+non ammette più: va tolto, o in quel caso va bloccato il verdetto. Risolto: il ripiego è
+stato tolto e `geographiclib` si importa senza alternative.
 
 **GT13 — Esito «al limite».** La banda dello 0,5% sulla distanza e sulla quota è una
 scelta del codice. Il §4.3.4b chiede di risolvere ogni dubbio a sfavore del pilota: il

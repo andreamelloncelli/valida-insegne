@@ -9,20 +9,20 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
+from geographiclib.geodesic import Geodesic
+
 from silverc.documentation import RecorderInfo, RecorderKind, classify_recorder
 from silverc.igc import DeclaredTask, Fix, Flight, Waypoint
 from silverc.rules import PARAMS, RULES
 
 logger = logging.getLogger(__name__)
 
-try:
-    from geographiclib.geodesic import Geodesic
+# §1.3.7: le distanze si misurano sull'ellissoide WGS84, senza ripiego sulla
+# sfera FAI.
+_GEODESIC_MODEL = "WGS84 (geographiclib)"
 
-    _GEODESIC_MODEL = "WGS84 (geographiclib)"
-except ImportError:  # pragma: no cover - dipende dall'ambiente
-    Geodesic = None
-    _GEODESIC_MODEL = "sfera FAI r=6371000 m (geographiclib assente)"
-
+# Solo per i confronti approssimati interni alla traccia, mai per le distanze
+# ufficiali.
 _FAI_SPHERE_RADIUS_M = 6_371_000.0
 
 RELEASE_SOURCE_MANUAL = "dichiarato dall'utente"
@@ -91,13 +91,7 @@ class FlightAnalysis:
 
 
 def geodesic_distance_ll(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    if Geodesic is not None:
-        return float(Geodesic.WGS84.Inverse(lat1, lon1, lat2, lon2)["s12"])
-    phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    dphi = phi2 - phi1
-    dlambda = math.radians(lon2 - lon1)
-    h = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
-    return 2 * _FAI_SPHERE_RADIUS_M * math.asin(math.sqrt(h))
+    return float(Geodesic.WGS84.Inverse(lat1, lon1, lat2, lon2)["s12"])
 
 
 def geodesic_distance_m(a: Fix, b: Fix) -> tuple[float, str]:
