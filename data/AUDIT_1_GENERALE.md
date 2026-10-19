@@ -32,7 +32,7 @@ Codici: **T** trasversali, **D** durata, **Q** guadagno di quota, **K** distanza
 | GT5 | Continuità: nessun atterraggio intermedio, buchi oltre 1 min da segnalare | §2.4.5, §4.3.5b | ❌ |
 | GT6 | Nessun uso del motore durante la prova | §2.4.5, §2.4.7 | 🟡 |
 | GT7 | Sgancio ricavato dalla traccia (inizio della discesa o della virata stretta) | §2.4.2a | ✅ |
-| GT8 | Sgancio inseribile a mano anche dall'interfaccia web | Maurizio | ❌ |
+| GT8 | Sgancio inseribile a mano anche dall'interfaccia web | Maurizio | ✅ |
 | GT9 | Identificativo dell'aliante: marche **oppure** sigla di gara | §1.1.3 | ❌ |
 | GT10 | Pilota o marche mancanti o errati: correggibili con certificato dell'OO | §2.3b, §4.4.2c | 🟡 |
 | GT11 | Dichiarazione pre-volo (anche via internet, se ammessa dalla NAC) | §1.1.4, §2.3a | 🟡 |
@@ -75,8 +75,8 @@ richiede la traccia di un secondo registratore (§4.3.5b): va almeno segnalato.
 motoaliante va segnalata anche l'**assenza** di ENL/MOP e la prova finisce all'avvio del
 motore (GD3). Con motore sigillato decide l'OO (§2.4.7).
 
-**GT8 — Sgancio dall'interfaccia web.** Da riga di comando c'è `--release-time`, nella
-pagina web no. Serve un campo HH:MM:SS UTC.
+**GT8 — Sgancio dall'interfaccia web.** Risolto: la pagina web ha un campo HH:MM:SS UTC,
+letto con `analysis.parse_release_time` come `--release-time` da riga di comando.
 
 **GT9 — Identificativo dell'aliante.** Per il §1.1.3 basta una fra marche e sigla di gara.
 Il codice esige le marche (HFGID) e tratta la sigla come facoltativa: un file con sola

@@ -11,7 +11,7 @@ from pathlib import Path
 
 import streamlit as st
 
-from silverc.analysis import analyse
+from silverc.analysis import analyse, parse_release_time
 from silverc.documentation import RecorderKind
 from silverc.igc import IGCParseError, parse_igc
 from silverc.report import render
@@ -46,6 +46,11 @@ calibrated = st.checkbox(
     help="Senza taratura si usa la quota GNSS con un margine di 100 m su tutti i "
     "requisiti di quota (SC3 §2.4.6a, §2.4.3c).",
 )
+release_input = st.text_input(
+    "Orario di sgancio (UTC, HH:MM:SS)",
+    help="L'IGC non registra lo sgancio: se lasciato vuoto viene stimato dalla "
+    "traccia. Indicarlo quando la stima ha confidenza bassa (SC3 §2.4.2a).",
+)
 use_gnss_altitude = st.checkbox("Usa la quota GNSS invece di quella barometrica (con penalizzazione)")
 
 uploaded_file = st.file_uploader("Carica un file IGC", type=["igc"])
@@ -60,8 +65,16 @@ if uploaded_file is not None:
         except IGCParseError as exc:
             st.error(f"Errore: {exc}")
         else:
+            release_time = None
+            if release_input.strip():
+                try:
+                    release_time = parse_release_time(release_input, flight)
+                except ValueError as exc:
+                    st.error(f"Errore: {exc}")
+                    st.stop()
             analysis = analyse(
                 flight,
+                release_time=release_time,
                 use_gnss_altitude=use_gnss_altitude,
                 recorder_kind=_RECORDER_OPTIONS[recorder_choice],
                 calibrated=calibrated,

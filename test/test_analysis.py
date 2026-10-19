@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from flights import GROUND_ALT, RELEASE_T, TAKEOFF_T, TOW_TOP_ALT, build_flight, climbing_profile, descending_profile
-from silverc.analysis import analyse, compute_height_gain, geodesic_distance_m
+from silverc.analysis import analyse, compute_height_gain, geodesic_distance_m, parse_release_time
 from silverc.igc import Fix, parse_igc
 
 START = 36000
@@ -119,3 +119,29 @@ def test_engine_noise_is_flagged(tmp_path):
 
     assert analysis.engine_suspected is True
     assert analysis.max_enl == 800
+
+
+def test_parse_release_time_uses_flight_date(tmp_path):
+    path = build_flight(
+        tmp_path / "t.igc",
+        soaring_duration_s=3600,
+        distance_m=20_000,
+        altitude=descending_profile(),
+    )
+    flight = parse_igc(path)
+    moment = parse_release_time("10:07:00", flight)
+
+    assert moment.date() == flight.flight_date
+    assert (moment.hour, moment.minute, moment.second) == (10, 7, 0)
+    assert parse_release_time("10:07", flight) == moment
+
+
+def test_parse_release_time_rejects_bad_input(tmp_path):
+    path = build_flight(
+        tmp_path / "t.igc",
+        soaring_duration_s=3600,
+        distance_m=20_000,
+        altitude=descending_profile(),
+    )
+    with pytest.raises(ValueError):
+        parse_release_time("dopo pranzo", parse_igc(path))

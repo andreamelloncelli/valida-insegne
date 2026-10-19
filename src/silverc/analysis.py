@@ -6,7 +6,7 @@ import logging
 import math
 import time
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 from silverc.documentation import RecorderInfo, RecorderKind, classify_recorder
 from silverc.igc import DeclaredTask, Fix, Flight, Waypoint
@@ -344,6 +344,21 @@ def verify_declared_task(
         [w.label for w in result.missed],
     )
     return result
+
+
+def parse_release_time(value: str, flight: Flight) -> datetime:
+    """Orario di sgancio HH:MM[:SS] UTC indicato dall'utente, alla data del volo."""
+    for fmt in ("%H:%M:%S", "%H:%M"):
+        try:
+            parsed = datetime.strptime(value.strip(), fmt)
+        except ValueError:
+            continue
+        moment = parsed.replace(tzinfo=timezone.utc)
+        day = flight.flight_date or (flight.fixes[0].time.date() if flight.fixes else None)
+        if day is not None:
+            moment = moment.replace(year=day.year, month=day.month, day=day.day)
+        return moment
+    raise ValueError("orario di sgancio atteso come HH:MM:SS (UTC)")
 
 
 def find_point_at(fixes: list[Fix], moment: datetime) -> Point:

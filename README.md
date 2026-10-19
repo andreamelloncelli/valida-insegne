@@ -64,7 +64,8 @@ uv run silverc volo.igc --badge oro --release-time 11:42:30 --verbose
 - `--release-time HH:MM:SS` (UTC): l'IGC **non registra lo sgancio**. Senza
   questo parametro il programma lo stima dalla traccia (fine della salita
   continua iniziale) e lo dichiara nel report; se la stima e' poco affidabile
-  il verdetto su durata e quota diventa `NON DETERMINABILE`.
+  il verdetto su durata e quota diventa `NON DETERMINABILE`. Nella pagina web lo
+  stesso orario si indica nel campo *Orario di sgancio*.
 - `--recorder auto|fr|pr`: tipo di registratore (default `auto`, ricavato
   dal file).
 - `--calibrated`: il registratore ha dati di taratura barometrica; si usa la

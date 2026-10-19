@@ -168,7 +168,8 @@ def check_duration(analysis: FlightAnalysis, rules: BadgeRules = SILVER) -> Requ
         verdict = Verdict.UNDETERMINED
         reasons.append(
             "L'istante di sgancio non e' ricavabile con sicurezza dalla traccia "
-            "(l'IGC non lo registra). Ripetere l'analisi indicando --release-time."
+            "(l'IGC non lo registra). Ripetere l'analisi indicando l'orario di sgancio "
+            "(--release-time o campo nella pagina web)."
         )
     else:
         reasons.append(
@@ -216,7 +217,7 @@ def check_height_gain(analysis: FlightAnalysis, rules: BadgeRules = SILVER) -> R
     if analysis.release_confidence in {"bassa", "nulla"}:
         reasons.append(
             "Il punto basso e' vincolato a un istante di sgancio stimato: "
-            "confermarlo con --release-time."
+            "confermarlo indicando l'orario di sgancio (--release-time o pagina web)."
         )
     return Requirement(
         code="quota",
