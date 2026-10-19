@@ -94,6 +94,11 @@ class Flight:
         return fty or "n/d"
 
     @property
+    def recorder_hardware(self) -> str:
+        """Versione hardware del registratore (HFRHW), utile a riconoscerne il modello."""
+        return self.headers.get("RHW", "").strip() or "n/d"
+
+    @property
     def manufacturer_code(self) -> str:
         """Codice costruttore a 3 caratteri del record A (es. LXV, FLA, XCS)."""
         return self.a_record[1:4].upper() if len(self.a_record) >= 4 else ""

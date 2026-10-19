@@ -222,3 +222,15 @@ def test_report_shows_documentation_section(tmp_path):
     assert "DOCUMENTAZIONE DEL FILE IGC" in text
     assert "Position Recorder" in text
     assert "[NO] Pilota" in text
+
+
+def test_hardware_version_is_read_and_reported(tmp_path):
+    flight = _flight(tmp_path, hardware="2.1")
+    info = classify_recorder(flight)
+
+    assert info.hardware == "2.1"
+    assert "hardware 2.1" in render(validate_silver(flight, analyse(flight)))
+
+
+def test_missing_hardware_version_is_nd(tmp_path):
+    assert classify_recorder(_flight(tmp_path)).hardware == "n/d"

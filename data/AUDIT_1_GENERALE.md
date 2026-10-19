@@ -39,7 +39,7 @@ Codici: **T** trasversali, **D** durata, **Q** guadagno di quota, **K** distanza
 | GT12 | Distanze sull'ellissoide WGS84 | §1.3.7 | ✅ |
 | GT13 | Imprecisioni di misura al massimo svantaggio del pilota | §4.3.4b | ✅ |
 | GT14 | Firma del file (G-record) verificata col programma IGC | §4.3.4a | 🟡 |
-| GT15 | Versione hardware del registratore (HFRHW) nel report | Maurizio | ❌ |
+| GT15 | Versione hardware del registratore (HFRHW) nel report | Maurizio | ✅ |
 | GT16 | Riferimenti AeCI e `TO VERIFY` sostituiti con i paragrafi SC3 | — | ✅ |
 
 **GT1 — Registratore.** Il codice distingue FR e PR dal codice costruttore, dal G-record e
@@ -110,6 +110,9 @@ stato tolto e `geographiclib` si importa senza alternative.
 scelta del codice. Il §4.3.4b chiede di risolvere ogni dubbio a sfavore del pilota: il
 report deve dire che «al limite» non è un esito valido per la richiesta. Risolto: ogni
 prova al limite lo dice nelle motivazioni.
+
+**GT15 — Versione hardware.** Risolto: HFRHW è letto e mostrato accanto a costruttore e
+modello nel report e nella pagina web, per riconoscere il dispositivo nella lista FAI.
 
 **GT16 — Riferimenti normativi.** Risolto: `rules.py`, i messaggi del report, la pagina
 Criteri, README e REQUISITI citano i paragrafi SC3 al posto degli articoli AeCI e dei

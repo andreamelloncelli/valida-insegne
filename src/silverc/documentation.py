@@ -31,6 +31,7 @@ class RecorderInfo:
     model: str
     source: str
     reasons: list[str] = field(default_factory=list)
+    hardware: str = "n/d"
 
     @property
     def is_flight_recorder(self) -> bool:
@@ -68,6 +69,7 @@ def classify_recorder(flight: Flight, override: RecorderKind | None = None) -> R
             model=model,
             source="indicato dall'utente",
             reasons=[f"Tipo di registratore indicato dall'utente: {override.value}."],
+            hardware=flight.recorder_hardware,
         )
     else:
         reasons: list[str] = []
@@ -104,7 +106,12 @@ def classify_recorder(flight: Flight, override: RecorderKind | None = None) -> R
                 "dispositivi approvati."
             )
         info = RecorderInfo(
-            kind=kind, manufacturer=code or "n/d", model=model, source="dal file", reasons=reasons
+            kind=kind,
+            manufacturer=code or "n/d",
+            model=model,
+            source="dal file",
+            reasons=reasons,
+            hardware=flight.recorder_hardware,
         )
 
     logger.debug(

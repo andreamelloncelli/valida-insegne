@@ -79,7 +79,8 @@ def render(report: ValidationReport) -> str:
     if recorder is not None:
         lines.append(
             f"Registratore : {recorder.kind.value} "
-            f"(costruttore {recorder.manufacturer}, {recorder.source})"
+            f"(costruttore {recorder.manufacturer}, modello {recorder.model}, "
+            f"hardware {recorder.hardware}, {recorder.source})"
         )
         lines += [f"               - {r}" for r in recorder.reasons]
     for doc in report.documentation:

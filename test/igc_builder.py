@@ -35,6 +35,7 @@ class IGCBuilder:
     registration: str = "I-ABCD"
     fr_type: str = "LXNAV,LX9000"
     competition_id: str = ""
+    hardware: str = ""
     lines: list[str] = field(default_factory=list)
     task: list[str] = field(default_factory=list)
 
@@ -82,6 +83,8 @@ class IGCBuilder:
             f"HFGIDGLIDERID:{self.registration}",
             f"HFFTYFRTYPE:{self.fr_type}",
         ]
+        if self.hardware:
+            head.append(f"HFRHWHARDWAREVERSION:{self.hardware}")
         if self.competition_id:
             head.append(f"HFCIDCOMPETITIONID:{self.competition_id}")
         if self.with_enl:

@@ -131,7 +131,8 @@ if uploaded_file is not None:
                 recorder = analysis.recorder
                 st.markdown(
                     f"**Registratore:** {recorder.kind.value} — costruttore "
-                    f"`{recorder.manufacturer}`, modello `{recorder.model}` ({recorder.source})"
+                    f"`{recorder.manufacturer}`, modello `{recorder.model}`, hardware "
+                    f"`{recorder.hardware}` ({recorder.source})"
                 )
                 st.markdown("\n".join(f"- {r}" for r in recorder.reasons))
             for doc in report.documentation:
