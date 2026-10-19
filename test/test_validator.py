@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from flights import build_flight, climbing_profile, descending_profile
 from silverc.analysis import analyse
 from silverc.igc import parse_igc
@@ -286,3 +288,52 @@ def test_report_contains_method_and_reasons(tmp_path):
     assert "Come e' stato verificato" in text
     assert "Motivazione" in text
     assert "ESITO COMPLESSIVO" in text
+
+
+def _edit_b_records(path, edit) -> None:
+    lines = Path(path).read_text(encoding="latin-1").splitlines()
+    b_index = [i for i, line in enumerate(lines) if line.startswith("B")]
+    edit(lines, b_index)
+    Path(path).write_text("\n".join(line for line in lines if line is not None) + "\n", encoding="latin-1")
+
+
+def test_recording_gap_is_warned(tmp_path):
+    path = build_flight(
+        tmp_path / "g.igc",
+        soaring_duration_s=FIVE_HOURS + 600,
+        distance_m=60_000,
+        altitude=climbing_profile(1500),
+    )
+
+    def drop(lines, b_index):
+        # Cinque fix consecutivi in meno a meta' volo: un buco di 180 s.
+        for i in b_index[300:305]:
+            lines[i] = None
+
+    _edit_b_records(path, drop)
+    report = _report(path)
+
+    assert any("buchi di registrazione" in w and "180 s" in w for w in report.warnings)
+    assert report.complete is True
+
+
+def test_intermediate_stop_makes_requirements_undetermined(tmp_path):
+    path = build_flight(
+        tmp_path / "s.igc",
+        soaring_duration_s=FIVE_HOURS + 600,
+        distance_m=60_000,
+        altitude=climbing_profile(1500),
+    )
+
+    def park(lines, b_index):
+        # Dieci minuti fermi nella stessa posizione a meta' volo.
+        anchor = lines[b_index[300]]
+        for i in b_index[301:321]:
+            lines[i] = lines[i][:7] + anchor[7:24] + lines[i][24:]
+
+    _edit_b_records(path, park)
+    report = _report(path)
+
+    assert report.analysis.intermediate_stops
+    assert all(r.verdict is not Verdict.PASS for r in report.requirements)
+    assert "§2.4.5" in " ".join(_by_code(report, "durata").reasons)

@@ -468,6 +468,19 @@ def validate_badge(
         distance,
         check_height_gain(analysis, rules),
     ]
+    if analysis.intermediate_stops:
+        stops = ", ".join(
+            f"{start.time:%H:%M:%S}-{end.time:%H:%M:%S}"
+            for start, end in analysis.intermediate_stops
+        )
+        for requirement in requirements:
+            if requirement.verdict in {Verdict.PASS, Verdict.MARGINAL}:
+                requirement.verdict = Verdict.UNDETERMINED
+            requirement.reasons.append(
+                f"La traccia mostra l'aliante fermo dopo lo sgancio ({stops} UTC): "
+                "possibile atterraggio intermedio, che il §2.4.5 esclude. La "
+                "continuita' del volo va confermata dall'OO."
+            )
     warnings: list[str] = list(analysis.notes)
 
     task = flight.task

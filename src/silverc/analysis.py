@@ -6,7 +6,7 @@ import logging
 import math
 import statistics
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from silverc.documentation import RecorderInfo, RecorderKind, classify_recorder
@@ -82,6 +82,8 @@ class FlightAnalysis:
     calibrated: bool = False
     balanced_finish: FinishFix | None = None
     median_fix_interval_s: float = 0.0
+    gaps: list[tuple[Point, float]] = field(default_factory=list)
+    intermediate_stops: list[tuple[Point, Point]] = field(default_factory=list)
 
     @property
     def duration_s(self) -> float:
@@ -364,6 +366,42 @@ def median_fix_interval_s(fixes: list[Fix], start_index: int, end_index: int) ->
     return statistics.median(intervals) if intervals else 0.0
 
 
+def find_gaps(
+    fixes: list[Fix], start_index: int, end_index: int, max_interval_s: float
+) -> list[tuple[Point, float]]:
+    """Intervalli fra fix consecutivi oltre `max_interval_s`: (fix che chiude il buco, durata)."""
+    gaps: list[tuple[Point, float]] = []
+    for i in range(start_index + 1, min(end_index + 1, len(fixes))):
+        interval = (fixes[i].time - fixes[i - 1].time).total_seconds()
+        if interval > max_interval_s:
+            gaps.append((Point(i, fixes[i]), interval))
+    return gaps
+
+
+def find_intermediate_stops(
+    fixes: list[Fix], moving: list[bool], start_index: int, end_index: int
+) -> list[tuple[Point, Point]]:
+    """Soste a terra fra due indici: tratti in cui l'aliante non si sposta.
+
+    In volo un aliante non resta entro `stationary_radius_m` per
+    `stationary_window_s`: un tratto fermo dopo lo sgancio e prima
+    dell'atterraggio finale e' un atterraggio intermedio (§2.4.5).
+    """
+    stops: list[tuple[Point, Point]] = []
+    run_start: int | None = None
+    for i in range(start_index, min(end_index, len(fixes))):
+        if not moving[i]:
+            if run_start is None:
+                run_start = i
+        elif run_start is not None:
+            stops.append((Point(run_start, fixes[run_start]), Point(i, fixes[i])))
+            run_start = None
+    if run_start is not None:
+        last = min(end_index, len(fixes) - 1)
+        stops.append((Point(run_start, fixes[run_start]), Point(last, fixes[last])))
+    return stops
+
+
 def parse_release_time(value: str, flight: Flight) -> datetime:
     """Orario di sgancio HH:MM[:SS] UTC indicato dall'utente, alla data del volo."""
     for fmt in ("%H:%M:%S", "%H:%M"):
@@ -509,6 +547,23 @@ def analyse(
             "non e' una prova sufficiente per la richiesta."
         )
 
+    # Con cadenza gia' oltre il minuto ogni intervallo sarebbe un buco: basta
+    # l'avvertenza sulla cadenza.
+    gaps = (
+        find_gaps(fixes, release.index, landing.index, RULES.max_fix_interval_s)
+        if cadence <= RULES.max_fix_interval_s
+        else []
+    )
+    if gaps:
+        longest = max(gaps, key=lambda gap: gap[1])
+        notes.append(
+            f"{len(gaps)} buchi di registrazione oltre {RULES.max_fix_interval_s:.0f} s "
+            f"(il piu' lungo di {longest[1]:.0f} s, chiuso alle "
+            f"{longest[0].time:%H:%M:%S} UTC): la continuita' del volo va confermata "
+            "dall'OO o con la traccia di un secondo registratore (§2.4a, §2.4.5, §4.3.5b)."
+        )
+    stops = find_intermediate_stops(fixes, moving, release.index, landing.index)
+
     enl_values = [f.enl for f in fixes[release.index : landing.index + 1] if f.enl is not None]
     max_enl = max(enl_values) if enl_values else None
     engine_suspected = bool(
@@ -532,6 +587,8 @@ def analyse(
         engine_suspected=engine_suspected,
         max_enl=max_enl,
         median_fix_interval_s=cadence,
+        gaps=gaps,
+        intermediate_stops=stops,
         notes=notes,
         task_check=(
             verify_declared_task(

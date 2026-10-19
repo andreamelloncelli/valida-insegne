@@ -29,7 +29,7 @@ Codici: **T** trasversali, **D** durata, **Q** guadagno di quota, **K** distanza
 | GT2 | Quota GNSS con margine di 100 m su **tutti** i requisiti di quota quando manca la taratura barometrica | §2.4.3c, §2.4.6a | ✅ |
 | GT3 | Correzione della quota barometrica con la curva di taratura | §2.4.3a, §4.3.4c | ❌ |
 | GT4 | Cadenza di almeno un fix al minuto | §2.4.1 | ✅ |
-| GT5 | Continuità: nessun atterraggio intermedio, buchi oltre 1 min da segnalare | §2.4.5, §4.3.5b | ❌ |
+| GT5 | Continuità: nessun atterraggio intermedio, buchi oltre 1 min da segnalare | §2.4.5, §4.3.5b | ✅ |
 | GT6 | Nessun uso del motore durante la prova | §2.4.5, §2.4.7 | 🟡 |
 | GT7 | Sgancio ricavato dalla traccia (inizio della discesa o della virata stretta) | §2.4.2a | ✅ |
 | GT8 | Sgancio inseribile a mano anche dall'interfaccia web | Maurizio | ✅ |
@@ -73,6 +73,9 @@ dell'atterraggio non si ferma più al primo intervallo oltre la finestra di sost
 **GT5 — Continuità.** L'atterraggio è l'ultima sosta della traccia. Una sosta intermedia
 (atterraggio fuori campo e ripartenza) non viene rilevata. Un buco di dati oltre 1 minuto
 richiede la traccia di un secondo registratore (§4.3.5b): va almeno segnalato.
+Risolto: i buchi oltre 60 s fra sgancio e atterraggio sono fra le avvertenze; un tratto in
+cui l'aliante resta fermo dopo lo sgancio rende NON DETERMINABILI le tre prove, con il
+rimando all'OO (§2.4.5).
 
 **GT6 — Motore.** C'è solo un'avvertenza con soglia ENL arbitraria (500). Per un
 motoaliante va segnalata anche l'**assenza** di ENL/MOP e la prova finisce all'avvio del
