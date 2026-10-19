@@ -6,14 +6,9 @@ import logging
 from dataclasses import dataclass, field
 from enum import Enum
 
-from silverc.analysis import (
-    FinishFix,
-    FlightAnalysis,
-    LossOfHeight,
-    geodesic_distance_ll,
-    loss_of_height,
-)
+from silverc.analysis import FinishFix, FlightAnalysis
 from silverc.documentation import DocumentCheck, check_headers
+from silverc.geo import LossOfHeight, geodesic_distance_ll, loss_of_height
 from silverc.igc import Flight
 from silverc.rules import GOLD, RULES, SILVER, BadgeRules
 

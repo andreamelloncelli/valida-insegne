@@ -3,44 +3,30 @@
 from __future__ import annotations
 
 import logging
-import math
 import statistics
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from geographiclib.geodesic import Geodesic
-
 from silverc.course import CourseType, classify_course, is_closed
 from silverc.documentation import RecorderInfo, RecorderKind, classify_recorder
+from silverc.geo import (
+    Point,
+    altitude,
+    fast_distance_ll,
+    fast_distance_m,
+    geodesic_distance_ll,
+    geodesic_distance_m,
+    loss_of_height,
+)
 from silverc.igc import DeclaredTask, Fix, Flight, Waypoint
 from silverc.rules import PARAMS, RULES
 
 logger = logging.getLogger(__name__)
 
-# §1.3.7: le distanze si misurano sull'ellissoide WGS84, senza ripiego sulla
-# sfera FAI.
-_GEODESIC_MODEL = "WGS84 (geographiclib)"
-
-# Solo per i confronti approssimati interni alla traccia, mai per le distanze
-# ufficiali.
-_FAI_SPHERE_RADIUS_M = 6_371_000.0
-
 RELEASE_SOURCE_MANUAL = "dichiarato dall'utente"
 RELEASE_SOURCE_HEURISTIC = "euristica sulla traccia"
 RELEASE_SOURCE_ENGINE = "spegnimento del motore (§1.2.8)"
-
-
-@dataclass(frozen=True)
-class Point:
-    """Un fix con il suo indice nella traccia."""
-
-    index: int
-    fix: Fix
-
-    @property
-    def time(self) -> datetime:
-        return self.fix.time
 
 
 @dataclass
@@ -100,31 +86,6 @@ class FlightAnalysis:
         return (self.finish.time - self.release.time).total_seconds()
 
 
-def geodesic_distance_ll(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    return float(Geodesic.WGS84.Inverse(lat1, lon1, lat2, lon2)["s12"])
-
-
-def geodesic_distance_m(a: Fix, b: Fix) -> tuple[float, str]:
-    """Distanza fra due fix; restituisce anche il modello geodetico usato."""
-    return geodesic_distance_ll(a.lat, a.lon, b.lat, b.lon), _GEODESIC_MODEL
-
-
-def _fast_distance_ll(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    """Approssimazione equirettangolare, per i confronti interni alla traccia.
-
-    Errore trascurabile sotto il chilometro ed evita centinaia di migliaia di
-    chiamate al calcolo geodetico completo su una traccia a 1 Hz.
-    """
-    mean_lat = math.radians((lat1 + lat2) / 2.0)
-    dx = math.radians(lon2 - lon1) * math.cos(mean_lat)
-    dy = math.radians(lat2 - lat1)
-    return math.hypot(dx, dy) * _FAI_SPHERE_RADIUS_M
-
-
-def _fast_distance_m(a: Fix, b: Fix) -> float:
-    return _fast_distance_ll(a.lat, a.lon, b.lat, b.lon)
-
-
 def _sampling_stride(fixes: list[Fix], window_s: int) -> int:
     span = (fixes[-1].time - fixes[0].time).total_seconds()
     if span <= 0 or len(fixes) < 2:
@@ -142,7 +103,7 @@ def _moving_flags(fixes: list[Fix]) -> list[bool]:
         limit = fix.time.timestamp() + PARAMS.stationary_window_s
         j = i + 1
         while j < len(fixes) and fixes[j].time.timestamp() <= limit:
-            if _fast_distance_m(fix, fixes[j]) >= PARAMS.stationary_radius_m:
+            if fast_distance_m(fix, fixes[j]) >= PARAMS.stationary_radius_m:
                 flags[i] = True
                 break
             j += stride
@@ -152,14 +113,10 @@ def _moving_flags(fixes: list[Fix]) -> list[bool]:
             not flags[i]
             and i + 1 < len(fixes)
             and fixes[i + 1].time.timestamp() > limit
-            and _fast_distance_m(fix, fixes[i + 1]) >= PARAMS.stationary_radius_m
+            and fast_distance_m(fix, fixes[i + 1]) >= PARAMS.stationary_radius_m
         ):
             flags[i] = True
     return flags
-
-
-def _altitude(fix: Fix, use_gnss: bool) -> int | None:
-    return fix.gnss_alt if use_gnss else fix.pressure_alt
 
 
 def detect_takeoff(fixes: list[Fix], moving: list[bool] | None = None) -> Point:
@@ -190,9 +147,9 @@ def detect_release(fixes: list[Fix], takeoff: Point, use_gnss: bool) -> tuple[Po
     """
     peak_alt: int | None = None
     peak_point: Point | None = None
-    takeoff_alt = _altitude(takeoff.fix, use_gnss)
+    takeoff_alt = altitude(takeoff.fix, use_gnss)
     for i in range(takeoff.index, len(fixes)):
-        alt = _altitude(fixes[i], use_gnss)
+        alt = altitude(fixes[i], use_gnss)
         if alt is None:
             continue
         if peak_alt is None or alt > peak_alt:
@@ -222,38 +179,10 @@ def find_farthest_point(fixes: list[Fix], origin: Fix, start_index: int, end_ind
     best_index = start_index
     best_distance = -1.0
     for i in range(start_index, min(end_index + 1, len(fixes))):
-        distance = _fast_distance_m(origin, fixes[i])
+        distance = fast_distance_m(origin, fixes[i])
         if distance > best_distance:
             best_distance, best_index = distance, i
     return Point(best_index, fixes[best_index])
-
-
-@dataclass(frozen=True)
-class LossOfHeight:
-    """Esito del limite di perdita di quota del §2.4.4 su una distanza."""
-
-    flown_m: float
-    loss_m: float
-    limit_m: float
-    invalid: bool
-    official_m: float
-
-    @property
-    def excess_m(self) -> float:
-        return max(0.0, self.loss_m - self.limit_m)
-
-
-def loss_of_height(distance_m: float, loss_m: float, gnss: bool) -> LossOfHeight:
-    """Limite di perdita di quota del §2.4.4 e distanza che ne risulta."""
-    margin = RULES.gnss_altitude_penalty_m if gnss else 0.0
-    # La regola si sceglie sulla distanza volata, non su quella corretta: un
-    # volo di 130 km penalizzato a 80 km resta nella regola oltre i 100 km.
-    if distance_m <= RULES.loss_of_height_long_course_m:
-        limit = distance_m * RULES.loss_of_height_ratio - margin
-        return LossOfHeight(distance_m, loss_m, limit, loss_m > limit, distance_m)
-    limit = RULES.loss_of_height_long_limit_m - margin
-    penalty = RULES.loss_of_height_excess_factor * max(0.0, loss_m - limit)
-    return LossOfHeight(distance_m, loss_m, limit, False, distance_m - penalty)
 
 
 def choose_finish_fix(
@@ -273,16 +202,16 @@ def choose_finish_fix(
     (argento, §2.2.1a), la minore fra quella e la distanza dal decollo.
     """
     started = time.perf_counter()
-    release_alt = _altitude(release.fix, use_gnss)
+    release_alt = altitude(release.fix, use_gnss)
     best_key: tuple[bool, float] | None = None
     best_index = release.index
     for i in range(release.index, min(end_index + 1, len(fixes))):
-        alt = _altitude(fixes[i], use_gnss)
+        alt = altitude(fixes[i], use_gnss)
         loss = float(release_alt - alt) if release_alt is not None and alt is not None else 0.0
-        check = loss_of_height(_fast_distance_m(release.fix, fixes[i]), loss, use_gnss)
+        check = loss_of_height(fast_distance_m(release.fix, fixes[i]), loss, use_gnss)
         metric = check.official_m
         if from_takeoff:
-            metric = min(metric, _fast_distance_m(takeoff.fix, fixes[i]))
+            metric = min(metric, fast_distance_m(takeoff.fix, fixes[i]))
         key = (not check.invalid, metric)
         if best_key is None or key > best_key:
             best_key, best_index = key, i
@@ -305,8 +234,8 @@ def finish_fix(
     point: Point, release: Point, takeoff: Point, use_gnss: bool
 ) -> FinishFix:
     """Distanze geodetiche e perdita di quota di un fix d'arrivo."""
-    release_alt = _altitude(release.fix, use_gnss)
-    alt = _altitude(point.fix, use_gnss)
+    release_alt = altitude(release.fix, use_gnss)
+    alt = altitude(point.fix, use_gnss)
     return FinishFix(
         point=point,
         distance_m=geodesic_distance_m(release.fix, point.fix)[0],
@@ -395,7 +324,7 @@ def verify_declared_task(
         closest = float("inf")
         closest_at: Point | None = None
         for i in range(cursor, last_index + 1):
-            distance = _fast_distance_ll(waypoint.lat, waypoint.lon, fixes[i].lat, fixes[i].lon)
+            distance = fast_distance_ll(waypoint.lat, waypoint.lon, fixes[i].lat, fixes[i].lon)
             if distance < closest:
                 closest, closest_at = distance, Point(i, fixes[i])
             if distance <= radius:
@@ -416,14 +345,14 @@ def verify_declared_task(
 
     start_check, finish_check = checks[0], checks[-1]
     start_before_release = not start_check.reached and any(
-        _fast_distance_ll(task.start.lat, task.start.lon, fixes[i].lat, fixes[i].lon)
+        fast_distance_ll(task.start.lat, task.start.lon, fixes[i].lat, fixes[i].lon)
         <= start_check.radius_m
         for i in range(0, min(start_index, len(fixes)))
     )
     loss = 0.0
     if start_check.reached and finish_check.reached and start_check.point and finish_check.point:
-        start_alt = _altitude(start_check.point.fix, use_gnss)
-        finish_alt = _altitude(finish_check.point.fix, use_gnss)
+        start_alt = altitude(start_check.point.fix, use_gnss)
+        finish_alt = altitude(finish_check.point.fix, use_gnss)
         if start_alt is not None and finish_alt is not None:
             loss = float(start_alt - finish_alt)
 
@@ -535,11 +464,11 @@ def compute_height_gain(
     best = 0.0
     stop = len(fixes) if end_index is None else min(end_index + 1, len(fixes))
     for i in range(start_index, stop):
-        alt = _altitude(fixes[i], use_gnss)
+        alt = altitude(fixes[i], use_gnss)
         if alt is None:
             continue
         current = Point(i, fixes[i])
-        running_alt = _altitude(running_low.fix, use_gnss) if running_low else None
+        running_alt = altitude(running_low.fix, use_gnss) if running_low else None
         if running_alt is None or alt < running_alt:
             running_low = current
             running_alt = alt
@@ -653,8 +582,8 @@ def analyse(
     distance, model = geodesic_distance_m(release.fix, farthest.fix)
     distance_from_takeoff, _ = geodesic_distance_m(takeoff.fix, farthest.fix)
 
-    release_alt = _altitude(release.fix, use_gnss_altitude)
-    far_alt = _altitude(farthest.fix, use_gnss_altitude)
+    release_alt = altitude(release.fix, use_gnss_altitude)
+    far_alt = altitude(farthest.fix, use_gnss_altitude)
     loss = float(release_alt - far_alt) if release_alt is not None and far_alt is not None else 0.0
 
     silver_finish = finish_fix(

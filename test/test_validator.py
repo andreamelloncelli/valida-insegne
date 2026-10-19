@@ -3,7 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from flights import build_flight, climbing_profile, descending_profile
-from silverc.analysis import analyse, loss_of_height
+from silverc.analysis import analyse
+from silverc.geo import loss_of_height
 from silverc.igc import parse_igc
 from silverc.report import render
 from silverc.validator import Verdict, validate_silver
