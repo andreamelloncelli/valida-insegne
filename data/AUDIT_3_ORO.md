@@ -28,7 +28,7 @@ percorsi chiusi hanno partenza e arrivo con coordinate identiche (§1.2.11).
 | # | Tema | SC3 | Stato |
 | --- | --- | --- | --- |
 | OK1 | Linea retta dallo sgancio senza coordinate dichiarate | §1.4.2d, §2.3 | ✅ |
-| OK2 | Riconoscimento del tipo di percorso | §1.4.2d–h | ❌ |
+| OK2 | Riconoscimento del tipo di percorso | §1.4.2d–h | ✅ |
 | OK3 | Al massimo 3 virate | §1.4.4 | ✅ |
 | OK4 | Ordine libero delle virate solo nel percorso (f) | §1.4.2f | ❌ |
 | OK5 | Partenze e arrivi ammessi secondo il percorso | §1.4.4 | ❌ |
@@ -38,14 +38,15 @@ percorsi chiusi hanno partenza e arrivo con coordinate identiche (§1.2.11).
 | OK9 | −1 km per ogni virata raggiunta solo col cilindro | §1.3.6 | ❌ |
 | OK10 | Virata raggiunta anche se il segmento fra due fix attraversa la zona | §2.4.2c | ❌ |
 | OK11 | Distanza ufficiale = percorso − correzioni zona − penalità di quota | §1.3.7 | ❌ |
-| OK12 | Percorso chiuso: partenza e arrivo con le stesse coordinate | §1.2.11 | ❌ |
+| OK12 | Percorso chiuso: partenza e arrivo con le stesse coordinate | §1.2.11 | ✅ |
 | OK13 | Percorso dichiarato non completato: ripiego sulla linea retta | §2.2, §1.4.4 | ✅ |
-| OK14 | Sgancio prima della partenza, indicato nel report | Maurizio | 🟡 |
+| OK14 | Sgancio prima della partenza, indicato nel report | Maurizio | ✅ |
 | OK15 | Linea retta da una linea di partenza dichiarata | §1.4.2d | ❌ |
 
 **OK2 — Tipo di percorso.** Ogni dichiarazione è trattata come una spezzata da percorrere
 in ordine. Va distinto il percorso dal numero di virate e dalla coincidenza fra partenza
-e arrivo. È il prerequisito di OK4, OK5 e OK12.
+e arrivo. È il prerequisito di OK4, OK5 e OK12. Risolto in `course.classify_course`: il
+report indica il tipo di percorso riconosciuto.
 
 **OK4 — Ordine delle virate.** Solo nel percorso (f) le virate si girano in qualsiasi
 ordine. Oggi il codice esige sempre l'ordine dichiarato, e
@@ -78,7 +79,9 @@ radi un passaggio reale può risultare mancato: il codice è troppo severo.
 **OK11 — Distanza ufficiale.** Somma la correzione delle zone (OK9) e la penalità di
 perdita di quota (GK1) sul percorso dichiarato.
 
-**OK12 — Percorso chiuso.** Nessun controllo che partenza e arrivo coincidano.
+**OK12 — Percorso chiuso.** Risolto: un percorso è chiuso solo se partenza e arrivo hanno
+le stesse coordinate (`course.is_closed`); se distano meno di 1 km ma non coincidono il
+report lo segnala e il percorso è trattato come (f).
 
 **OK13 — Ripiego sulla linea retta.** Il §2.2 dice che un volo vale per ogni prova di cui
 soddisfa i requisiti. Oggi, se il file ha una dichiarazione, si valuta solo il percorso
@@ -88,8 +91,8 @@ si valuta anche come linea retta dallo sgancio (§1.4.2d), che non richiede coor
 (§2.3). Le distanze libere (§1.4.2i–l) non sono un ripiego possibile: la tabella §1.4.4
 le ammette solo per i record. Fatto in `validator.check_best_distance`: vale la geometria con l'esito migliore e il report riporta anche l'esito dell'altra.
 
-**OK14 — Sgancio prima della partenza.** La partenza si cerca già dopo lo sgancio, ma il
-report non lo dice.
+**OK14 — Sgancio prima della partenza.** La partenza si cerca già dopo lo sgancio. Risolto:
+se la partenza è stata attraversata solo prima dello sgancio il report lo spiega.
 
 **OK15 — Linea retta con partenza dichiarata.** Il percorso (d) ammette anche una linea di
 partenza dichiarata invece dello sgancio. Non è gestito; dipende da OK2 e OK6.

@@ -6,7 +6,13 @@ import logging
 from dataclasses import dataclass, field
 from enum import Enum
 
-from silverc.analysis import FinishFix, FlightAnalysis, LossOfHeight, loss_of_height
+from silverc.analysis import (
+    FinishFix,
+    FlightAnalysis,
+    LossOfHeight,
+    geodesic_distance_ll,
+    loss_of_height,
+)
 from silverc.documentation import DocumentCheck, check_headers
 from silverc.igc import Flight
 from silverc.rules import GOLD, RULES, SILVER, BadgeRules
@@ -305,7 +311,7 @@ def check_declared_distance(analysis: FlightAnalysis, rules: BadgeRules = GOLD) 
         "Distanza calcolata sommando le tratte fra i punti dichiarati "
         "(partenza, virate, arrivo).",
         "Ogni punto dev'essere toccato nell'ordine dichiarato, entrando nella "
-        "sua zona di osservazione.",
+        "sua zona di osservazione; la partenza si cerca dopo lo sgancio.",
         _loss_of_height_method(_uses_gnss(analysis)),
     ]
     check = analysis.task_check
@@ -337,8 +343,22 @@ def check_declared_distance(analysis: FlightAnalysis, rules: BadgeRules = GOLD) 
     reasons = [
         f"Percorso dichiarato di {check.distance_m / 1000:.2f} km su "
         f"{len(check.task.turnpoints)} punti di virata, contro i "
-        f"{required_km:.0f} km richiesti."
+        f"{required_km:.0f} km richiesti.",
+        f"Tipo di percorso: {check.course.value}.",
     ]
+    start_finish_m = geodesic_distance_ll(
+        check.task.start.lat, check.task.start.lon, check.task.finish.lat, check.task.finish.lon
+    )
+    if not check.closed and check.task.turnpoints and start_finish_m <= 1_000:
+        reasons.append(
+            f"Partenza e arrivo distano {start_finish_m:.0f} m ma non hanno le stesse "
+            "coordinate: non e' un percorso chiuso (§1.2.11)."
+        )
+    if check.start_before_release:
+        reasons.append(
+            "La partenza e' stata attraversata solo prima dello sgancio: non conta, "
+            "la prova inizia dopo lo sgancio (§1.3.1)."
+        )
 
     if len(check.task.turnpoints) > rules.max_turnpoints:
         verdict = Verdict.FAIL

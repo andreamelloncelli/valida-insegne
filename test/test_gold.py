@@ -9,7 +9,7 @@ from silverc.analysis import analyse
 from silverc.igc import parse_igc
 from silverc.rules import GOLD
 from silverc.report import render
-from silverc.validator import Verdict, validate_badge
+from silverc.validator import Verdict, check_declared_distance, validate_badge
 
 LAT, LON = 45.0, 9.0
 START = 36000
@@ -123,6 +123,31 @@ def test_long_loss_of_height_shortens_declared_distance(tmp_path):
     assert req.verdict is Verdict.FAIL
     assert 218 < float(req.measured.split()[0]) < 222
     assert "eccesso di 1000 m" in " ".join(req.reasons)
+
+
+def test_report_names_the_course_type(tmp_path):
+    path = build_gold_flight(tmp_path / "g.igc", legs=_OUT_AND_RETURN, declared=_DECLARED)
+    req, _ = _requirement(path)
+
+    assert "andata e ritorno (§1.4.2g)" in " ".join(req.reasons)
+
+
+def test_start_crossed_only_before_release_is_explained(tmp_path):
+    # La partenza dichiarata e' sotto il traino: dopo lo sgancio non si ripassa.
+    declared = [
+        (0.0, 0.0, "DECOLLO"),
+        (1500.0, 0.0, "PARTENZA"),
+        (310_000.0, 0.0, "META"),
+        (310_000.0, 0.0, "ATTERRAGGIO"),
+    ]
+    legs = [(3000.0, 0.0), (312_000.0, 0.0)]
+    path = build_gold_flight(tmp_path / "g.igc", legs=legs, declared=declared)
+    flight = parse_igc(path)
+    analysis = analyse(flight)
+
+    assert analysis.task_check.start_before_release is True
+    reasons = " ".join(check_declared_distance(analysis, GOLD).reasons)
+    assert "prima dello sgancio" in reasons
 
 
 def test_missed_turnpoint_fails(tmp_path):

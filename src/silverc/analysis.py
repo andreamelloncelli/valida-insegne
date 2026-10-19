@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 
 from geographiclib.geodesic import Geodesic
 
+from silverc.course import CourseType, classify_course, is_closed
 from silverc.documentation import RecorderInfo, RecorderKind, classify_recorder
 from silverc.igc import DeclaredTask, Fix, Flight, Waypoint
 from silverc.rules import PARAMS, RULES
@@ -336,6 +337,10 @@ class TaskCheck:
     waypoints: list[WaypointCheck]
     distance_m: float
     loss_of_height_m: float
+    course: CourseType = CourseType.THREE_TP
+    closed: bool = False
+    # La partenza e' stata attraversata solo prima dello sgancio (§1.3.1).
+    start_before_release: bool = False
 
     @property
     def completed(self) -> bool:
@@ -410,6 +415,11 @@ def verify_declared_task(
             cursor = reached_at.index
 
     start_check, finish_check = checks[0], checks[-1]
+    start_before_release = not start_check.reached and any(
+        _fast_distance_ll(task.start.lat, task.start.lon, fixes[i].lat, fixes[i].lon)
+        <= start_check.radius_m
+        for i in range(0, min(start_index, len(fixes)))
+    )
     loss = 0.0
     if start_check.reached and finish_check.reached and start_check.point and finish_check.point:
         start_alt = _altitude(start_check.point.fix, use_gnss)
@@ -422,6 +432,9 @@ def verify_declared_task(
         waypoints=checks,
         distance_m=declared_task_distance_m(task),
         loss_of_height_m=loss,
+        course=classify_course(task),
+        closed=is_closed(task),
+        start_before_release=start_before_release,
     )
     logger.debug(
         "Percorso dichiarato: %d punti, distanza=%.1fkm, completato=%s, mancati=%s",
