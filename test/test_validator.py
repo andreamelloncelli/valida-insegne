@@ -337,3 +337,17 @@ def test_intermediate_stop_makes_requirements_undetermined(tmp_path):
     assert report.analysis.intermediate_stops
     assert all(r.verdict is not Verdict.PASS for r in report.requirements)
     assert "§2.4.5" in " ".join(_by_code(report, "durata").reasons)
+
+
+def test_marginal_result_is_not_valid_for_the_claim(tmp_path):
+    # Senza taratura servono 1100 m: un guadagno di 1100 m e' nella banda.
+    path = build_flight(
+        tmp_path / "m.igc",
+        soaring_duration_s=7200,
+        distance_m=5_000,
+        altitude=climbing_profile(1100),
+    )
+    req = _by_code(_report(path), "quota")
+
+    assert req.verdict is Verdict.MARGINAL
+    assert "§4.3.4b" in " ".join(req.reasons)

@@ -56,7 +56,8 @@ class BadgeRules:
     max_fix_interval_s: float = 60.0
 
     # Non regolamentare: soglia oltre la quale il verdetto e' MARGINAL perche'
-    # l'incertezza del modello geodetico / del sensore puo' ribaltarlo.
+    # l'incertezza della posizione GNSS o del sensore di quota puo' ribaltarlo.
+    # Il report lo presenta come non valido per la richiesta (§4.3.4b).
     marginal_ratio: float = 0.005
 
 

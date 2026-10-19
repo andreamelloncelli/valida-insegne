@@ -37,7 +37,7 @@ Codici: **T** trasversali, **D** durata, **Q** guadagno di quota, **K** distanza
 | GT10 | Pilota o marche mancanti o errati: correggibili con certificato dell'OO | §2.3b, §4.4.2c | ✅ |
 | GT11 | Dichiarazione pre-volo (anche via internet, se ammessa dalla NAC) | §1.1.4, §2.3a | ✅ |
 | GT12 | Distanze sull'ellissoide WGS84 | §1.3.7 | ✅ |
-| GT13 | Imprecisioni di misura al massimo svantaggio del pilota | §4.3.4b | 🟡 |
+| GT13 | Imprecisioni di misura al massimo svantaggio del pilota | §4.3.4b | ✅ |
 | GT14 | Firma del file (G-record) verificata col programma IGC | §4.3.4a | 🟡 |
 | GT15 | Versione hardware del registratore (HFRHW) nel report | Maurizio | ❌ |
 | GT16 | Riferimenti AeCI e `TO VERIFY` sostituiti con i paragrafi SC3 | — | ✅ |
@@ -108,7 +108,8 @@ stato tolto e `geographiclib` si importa senza alternative.
 
 **GT13 — Esito «al limite».** La banda dello 0,5% sulla distanza e sulla quota è una
 scelta del codice. Il §4.3.4b chiede di risolvere ogni dubbio a sfavore del pilota: il
-report deve dire che «al limite» non è un esito valido per la richiesta.
+report deve dire che «al limite» non è un esito valido per la richiesta. Risolto: ogni
+prova al limite lo dice nelle motivazioni.
 
 **GT16 — Riferimenti normativi.** Risolto: `rules.py`, i messaggi del report, la pagina
 Criteri, README e REQUISITI citano i paragrafi SC3 al posto degli articoli AeCI e dei

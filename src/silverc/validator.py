@@ -257,7 +257,7 @@ def check_distance(analysis: FlightAnalysis, rules: BadgeRules = SILVER) -> Requ
         loss_m = balanced.loss_of_height_m
     loss = _loss_of_height(flown, loss_m, gnss)
     distance = loss.official_m
-    # Banda dovuta al modello geodetico (sfera FAI vs ellissoide WGS84).
+    # Banda d'incertezza della posizione GNSS: vedi RULES.marginal_ratio.
     verdict = _threshold_verdict(
         distance, rules.min_distance_m, band=rules.min_distance_m * RULES.marginal_ratio
     )
@@ -475,6 +475,14 @@ def validate_badge(
         distance,
         check_height_gain(analysis, rules),
     ]
+    for requirement in requirements:
+        if requirement.verdict is Verdict.MARGINAL:
+            requirement.reasons.append(
+                f"Esito al limite: lo scarto dalla soglia e' entro l'incertezza di misura "
+                f"({RULES.marginal_ratio:.1%}). Il §4.3.4b chiede di risolvere ogni dubbio "
+                "a sfavore del pilota: senza una verifica dell'OO questo esito non vale "
+                "per la richiesta."
+            )
     if analysis.intermediate_stops:
         stops = ", ".join(
             f"{start.time:%H:%M:%S}-{end.time:%H:%M:%S}"
