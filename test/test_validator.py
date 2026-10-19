@@ -496,3 +496,27 @@ def test_self_launch_release_is_engine_stop(tmp_path):
 
     assert "motore" in analysis.release_source
     assert analysis.release.time.hour * 3600 + analysis.release.time.minute * 60 + analysis.release.time.second == 36000 + 450
+
+
+def test_frozen_gps_in_final_glide_without_baro_does_not_end_the_flight(tmp_path):
+    # Logger senza quota barometrica: posizione e quota GNSS bloccate per dieci
+    # minuti a 1500 m, poi la planata finale continua e scende.
+    path = build_flight(
+        tmp_path / "g.igc",
+        soaring_duration_s=FIVE_HOURS + 600,
+        distance_m=60_000,
+        altitude=descending_profile(top=2500, bottom=300),
+    )
+
+    def freeze(lines, b_index):
+        anchor = lines[b_index[500]]
+        for i in b_index:
+            lines[i] = lines[i][:25] + "00000" + lines[i][30:]
+        anchor = lines[b_index[500]]
+        for i in b_index[501:521]:
+            lines[i] = lines[i][:7] + anchor[7:35] + lines[i][35:]
+
+    _edit_b_records(path, freeze)
+    analysis = _report(path).analysis
+
+    assert analysis.duration_s > FIVE_HOURS

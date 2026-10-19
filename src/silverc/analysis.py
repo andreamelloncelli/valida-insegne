@@ -14,9 +14,7 @@ from silverc.documentation import RecorderInfo, RecorderKind, classify_recorder
 from silverc.geo import (
     Point,
     altitude,
-    fast_distance_ll,
     fast_distance_m,
-    geodesic_distance_ll,
     geodesic_distance_m,
     loss_of_height,
 )
@@ -331,6 +329,19 @@ def _relaunched(fixes: list[Fix], stop: Point, use_gnss: bool) -> bool:
     return bool(after) and max(after) - base >= PARAMS.relaunch_climb_m
 
 
+def _stays_on_ground(fixes: list[Fix], stop: Point, use_gnss: bool) -> bool:
+    """Dopo la sosta la quota resta vicina a quella della sosta, ne' sale ne' scende?
+
+    Un blocco del GPS in planata finale, senza quota barometrica, sembra una
+    sosta; dopo pero' la quota scende ancora.
+    """
+    base = altitude(stop.fix, use_gnss)
+    if base is None:
+        return False
+    after = [a for a in (altitude(f, use_gnss) for f in fixes[stop.index :]) if a is not None]
+    return bool(after) and max(abs(a - base) for a in after) < PARAMS.relaunch_climb_m
+
+
 def refine_landing(
     fixes: list[Fix], moving: list[bool], release: Point, landing: Point, use_gnss: bool
 ) -> Point:
@@ -341,7 +352,7 @@ def refine_landing(
     piu' lunga del vero.
     """
     for start, _ in find_ground_stops(fixes, moving, release.index, landing.index, use_gnss):
-        if not _relaunched(fixes, start, use_gnss):
+        if _stays_on_ground(fixes, start, use_gnss):
             return start
     return landing
 

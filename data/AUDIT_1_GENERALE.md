@@ -38,7 +38,7 @@ Codici: **T** trasversali, **D** durata, **Q** guadagno di quota, **K** distanza
 | GT11 | Dichiarazione pre-volo (anche via internet, se ammessa dalla NAC) | §1.1.4, §2.3a | ✅ |
 | GT12 | Distanze sull'ellissoide WGS84 | §1.3.7 | ✅ |
 | GT13 | Imprecisioni di misura al massimo svantaggio del pilota | §4.3.4b | ✅ |
-| GT14 | Firma del file (G-record) verificata col programma IGC | §4.3.4a | 🟡 |
+| GT14 | Firma del file (G-record) verificata col programma IGC | §4.3.4a | 🟡 fuori ambito |
 | GT15 | Versione hardware del registratore (HFRHW) nel report | Maurizio | ✅ |
 | GT16 | Riferimenti AeCI e `TO VERIFY` sostituiti con i paragrafi SC3 | — | ✅ |
 
@@ -120,6 +120,10 @@ stato tolto e `geographiclib` si importa senza alternative.
 scelta del codice. Il §4.3.4b chiede di risolvere ogni dubbio a sfavore del pilota: il
 report deve dire che «al limite» non è un esito valido per la richiesta. Risolto: ogni
 prova al limite lo dice nelle motivazioni.
+
+**GT14 — Firma del file.** Il report segnala G-record assente o presente ma non verificato.
+La verifica vera richiede il programma `vali-*` del costruttore: resta fuori ambito (vedi
+in fondo) e la voce resta parziale per scelta.
 
 **GT15 — Versione hardware.** Risolto: HFRHW è letto e mostrato accanto a costruttore e
 modello nel report e nella pagina web, per riconoscere il dispositivo nella lista FAI.
