@@ -10,7 +10,7 @@ verificato e **perche'** e' stato accettato o rifiutato.
 |-----------|--------|---------------------|
 | Durata | 5 h | Dallo sgancio all'atterraggio (i fix registrati da fermo a fine volo vengono scartati) |
 | Distanza | 50 km | Distanza geodetica dallo sgancio al **punto più lontano** della traccia (non l'atterraggio); dev'essere oltre 50 km sia dallo sgancio sia dal fix d'inizio della corsa di decollo (§2.2.1a), con perdita di quota entro i limiti del §2.4.4 (1% fino a 100 km, poi 1000 m con riduzione della distanza) |
-| Guadagno di quota | 1000 m | Massima differenza fra un punto alto e un punto basso **che lo precede**, entrambi dopo lo sgancio. Con un Position Recorder: quota GNSS e soglia +100 m |
+| Guadagno di quota | 1000 m | Massima differenza fra un punto alto e un punto basso **che lo precede**, entrambi dopo lo sgancio. Senza dati di taratura barometrica: quota GNSS e soglia +100 m (§2.4.6a) |
 
 ## Insegna d'oro (`--badge oro`)
 
@@ -39,9 +39,11 @@ prove:
   sigla di gara è facoltativa;
 - **registratore**: *Flight Recorder* approvato IGC solo se il codice
   costruttore del record A è fra quelli approvati (`rules.RECORDERS`), il
-  G-record è presente e il modello è dichiarato. Altrimenti *Position
-  Recorder*: quota GNSS e soglia del guadagno di quota maggiorata di 100 m.
-  Con `--recorder fr|pr` il tipo si indica a mano.
+  G-record è presente e il modello è dichiarato, altrimenti *Position
+  Recorder*. Con `--recorder fr|pr` il tipo si indica a mano.
+- **quota**: senza dati di taratura barometrica, con un FR come con un PR, si
+  usa la quota GNSS con un margine di 100 m su tutti i requisiti di quota
+  (§2.4.6a, §2.4.3c). Con `--calibrated` si usa la quota barometrica.
 
 I tre requisiti possono essere ottenuti in **voli diversi**: il report li valuta
 in modo indipendente e indica quali sono coperti dalla traccia in esame.
@@ -64,9 +66,12 @@ uv run silverc volo.igc --badge oro --release-time 11:42:30 --verbose
   continua iniziale) e lo dichiara nel report; se la stima e' poco affidabile
   il verdetto su durata e quota diventa `NON DETERMINABILE`.
 - `--recorder auto|fr|pr`: tipo di registratore (default `auto`, ricavato
-  dal file). Con `pr` si usa la quota GNSS e la soglia di quota sale di 100 m.
-- `--gnss-altitude`: usa la quota GNSS anche con un Flight Recorder,
-  applicando la stessa maggiorazione di 100 m.
+  dal file).
+- `--calibrated`: il registratore ha dati di taratura barometrica; si usa la
+  quota barometrica senza margine. Senza questa opzione quota GNSS e margine
+  di 100 m (§2.4.6a).
+- `--gnss-altitude`: usa la quota GNSS anche con dati di taratura, con il
+  margine di 100 m.
 - `--verbose`: log di dettaglio su stderr.
 
 Codici di uscita: `0` volo che copre tutti e tre i requisiti, `1` copertura

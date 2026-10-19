@@ -79,23 +79,33 @@ def test_user_override_wins_over_file(tmp_path):
     assert info.source == "indicato dall'utente"
 
 
-def test_flight_recorder_uses_barometric_threshold(tmp_path):
-    # 1050 m di guadagno: sopra i 1000 m richiesti con un FR approvato.
-    req, report = _gain_report(tmp_path, 1050)
+def test_calibrated_recorder_uses_barometric_threshold(tmp_path):
+    # 1050 m di guadagno: con dati di taratura bastano i 1000 m (§2.4.6b).
+    req, report = _gain_report(tmp_path, 1050, calibrated=True)
 
     assert report.analysis.altitude_source.startswith("barometrica")
     assert req.verdict is Verdict.PASS
     assert req.required == "1000 m"
 
 
-def test_position_recorder_requires_100m_more_on_gnss(tmp_path):
-    # Stesso volo con un Position Recorder: servono 1100 m sulla quota GNSS.
-    req, report = _gain_report(tmp_path, 1050, a_record="AXCSAAA XCSoar")
+def test_uncalibrated_flight_recorder_requires_100m_more_on_gnss(tmp_path):
+    # §2.4.6a: anche un FR senza dati di taratura usa la quota GNSS col margine.
+    req, report = _gain_report(tmp_path, 1050)
 
+    assert report.analysis.recorder.is_flight_recorder
     assert report.analysis.altitude_source == "GNSS"
     assert req.required == "1100 m"
     assert req.verdict is Verdict.FAIL
-    assert "Position Recorder" in " ".join(req.reasons)
+    assert "taratura" in " ".join(req.reasons)
+
+
+def test_calibrated_position_recorder_uses_barometric_threshold(tmp_path):
+    # Il margine dipende dalla taratura, non dal tipo di registratore.
+    req, report = _gain_report(tmp_path, 1050, a_record="AXCSAAA XCSoar", calibrated=True)
+
+    assert not report.analysis.recorder.is_flight_recorder
+    assert req.required == "1000 m"
+    assert req.verdict is Verdict.PASS
 
 
 def test_position_recorder_without_gnss_altitude_is_undetermined(tmp_path):
@@ -142,8 +152,10 @@ def test_position_recorder_passes_with_margin(tmp_path):
     assert req.verdict is Verdict.PASS
 
 
-def test_override_to_position_recorder_applies_penalty(tmp_path):
-    req, _ = _gain_report(tmp_path, 1050, recorder_kind=RecorderKind.POSITION_RECORDER)
+def test_override_to_flight_recorder_keeps_margin_without_calibration(tmp_path):
+    req, _ = _gain_report(
+        tmp_path, 1050, a_record="AXCSAAA XCSoar", recorder_kind=RecorderKind.FLIGHT_RECORDER
+    )
 
     assert req.required == "1100 m"
 

@@ -186,7 +186,7 @@ def test_long_silver_distance_is_shortened_not_invalidated(tmp_path):
         altitude=descending_profile(top=800, bottom=500),
     )
     flight = parse_igc(path)
-    analysis = analyse(flight)
+    analysis = analyse(flight, calibrated=True)
     analysis.loss_of_height_m = 1500.0
     req = _by_code(validate_silver(flight, analysis), "distanza")
 

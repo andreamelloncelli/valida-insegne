@@ -115,7 +115,7 @@ def test_long_loss_of_height_shortens_declared_distance(tmp_path):
     # §2.4.4 1000 m di eccesso tolgono 100 km e restano ~220 km.
     path = build_gold_flight(tmp_path / "g.igc", legs=_OUT_AND_RETURN, declared=_DECLARED)
     flight = parse_igc(path)
-    analysis = analyse(flight)
+    analysis = analyse(flight, calibrated=True)
     analysis.task_check.loss_of_height_m = 2000.0
     report = validate_badge(flight, analysis, GOLD)
     req = next(r for r in report.requirements if r.code == "distanza")

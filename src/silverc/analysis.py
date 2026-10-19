@@ -78,6 +78,7 @@ class FlightAnalysis:
     task_check: "TaskCheck | None" = None
     recorder: RecorderInfo | None = None
     altitude_usable: bool = True
+    calibrated: bool = False
     balanced_finish: FinishFix | None = None
 
     @property
@@ -380,10 +381,13 @@ def analyse(
     release_time: datetime | None = None,
     use_gnss_altitude: bool = False,
     recorder_kind: RecorderKind | None = None,
+    calibrated: bool = False,
 ) -> FlightAnalysis:
     """Calcola tutte le grandezze necessarie alla validazione.
 
     `recorder_kind` forza il tipo di registratore; se assente si ricava dal file.
+    `calibrated` indica che il registratore ha dati di taratura barometrica:
+    solo allora si usa la quota barometrica senza margine (§2.4.6).
     """
     started = time.perf_counter()
     fixes = flight.fixes
@@ -393,27 +397,27 @@ def analyse(
     baro = [f.pressure_alt for f in fixes if f.pressure_alt is not None]
     gnss = [f.gnss_alt for f in fixes if f.gnss_alt is not None]
     altitude_usable = True
-    if not use_gnss_altitude and not recorder.is_flight_recorder:
-        # La quota barometrica di un Position Recorder non e' calibrata: si usa
-        # la GNSS e la soglia di guadagno di quota viene maggiorata.
+    if not use_gnss_altitude and not calibrated:
+        # §2.4.6a: senza dati di taratura, FR o PR che sia, vale il §2.4.3c:
+        # quota GNSS con un margine di 100 m su tutti i requisiti di quota.
         use_gnss_altitude = True
         notes.append(
-            "Registratore trattato come Position Recorder: usata la quota GNSS "
-            "con la maggiorazione prevista sul guadagno di quota."
+            "Nessun dato di taratura barometrica dichiarato: usata la quota GNSS "
+            "con il margine di 100 m sui requisiti di quota (§2.4.6a, §2.4.3c)."
         )
-        if not gnss or max(gnss) - min(gnss) < PARAMS.min_barometric_spread_m:
-            altitude_usable = False
-            notes.append(
-                "Quota GNSS assente o costante: con un Position Recorder il "
-                "guadagno di quota non e' determinabile."
-            )
     elif not use_gnss_altitude and (
         not baro or max(baro) - min(baro) < PARAMS.min_barometric_spread_m
     ):
         use_gnss_altitude = True
         notes.append(
             "Quota barometrica assente o costante (campo non compilato dal "
-            "logger): usata la quota GNSS con la penalizzazione prevista."
+            "logger): usata la quota GNSS con il margine di 100 m (§2.4.3c)."
+        )
+    if use_gnss_altitude and (not gnss or max(gnss) - min(gnss) < PARAMS.min_barometric_spread_m):
+        altitude_usable = False
+        notes.append(
+            "Quota GNSS assente o costante: senza una quota barometrica tarata "
+            "i requisiti di quota non sono determinabili."
         )
     altitude_source = "GNSS" if use_gnss_altitude else "barometrica (ISA 1013.25 hPa)"
 
@@ -496,6 +500,7 @@ def analyse(
         ),
         recorder=recorder,
         altitude_usable=altitude_usable,
+        calibrated=calibrated,
         balanced_finish=balanced_finish,
     )
     logger.debug(

@@ -26,7 +26,7 @@ Codici: **T** trasversali, **D** durata, **Q** guadagno di quota, **K** distanza
 | # | Tema | SC3 | Stato |
 | --- | --- | --- | --- |
 | GT1 | Registratore: FR approvato livello 1–3 oppure PR approvato dalla NAC | §2.2.6a, §2.5 | 🟡 |
-| GT2 | Quota GNSS con margine di 100 m su **tutti** i requisiti di quota quando manca la taratura barometrica | §2.4.3c, §2.4.6a | 🟡 |
+| GT2 | Quota GNSS con margine di 100 m su **tutti** i requisiti di quota quando manca la taratura barometrica | §2.4.3c, §2.4.6a | ✅ |
 | GT3 | Correzione della quota barometrica con la curva di taratura | §2.4.3a, §4.3.4c | ❌ |
 | GT4 | Cadenza di almeno un fix al minuto | §2.4.1 | ❌ |
 | GT5 | Continuità: nessun atterraggio intermedio, buchi oltre 1 min da segnalare | §2.4.5, §4.3.5b | ❌ |
@@ -48,14 +48,16 @@ nel report e va bene così. Con un PR va ricordato che la stima dei fix deve ess
 disattivata (§2.5e, certificato §4.4.2f).
 
 **GT2 — Margine dei 100 m: è legato alla taratura, non al tipo di registratore.**
-Il §2.4.6a applica il §2.4.3c a «FR o PR senza dati di taratura». Oggi il codice usa la
-quota GNSS con margine **solo** per i PR (`analysis.py:367`):
+Il §2.4.6a applica il §2.4.3c a «FR o PR senza dati di taratura». Il codice usava la
+quota GNSS con margine **solo** per i PR:
 
 - FR senza certificato di taratura: il codice usa la barometrica senza margine, ed è
   **troppo permissivo**;
 - PR con quota barometrica tarata: il codice impone GNSS e margine, ed è **troppo severo**.
 
-Serve un'indicazione dell'utente («taratura disponibile sì/no»). Il margine vale anche
+Risolto: `analyse(calibrated=...)`, `--calibrated` da riga di comando e una casella nella
+pagina web. Il default è «nessun dato di taratura» (§4.3.4b): quota GNSS e margine per FR e
+PR; con la taratura si usa la barometrica senza margine. Il margine vale anche
 per il limite di perdita di quota della distanza (§2.4.4), applicato da GK1 con la stessa
 condizione sulla quota GNSS.
 
@@ -127,7 +129,7 @@ Identico per le due insegne salvo la soglia (1000 m Argento, 3000 m Oro).
 | # | Tema | SC3 | Stato |
 | --- | --- | --- | --- |
 | GQ1 | Punto alto meno un punto basso precedente, dopo lo sgancio | §1.3.5, §1.4.4 | ✅ |
-| GQ2 | Margine di 100 m con quota GNSS | §2.4.3c | 🟡 (= GT2) |
+| GQ2 | Margine di 100 m con quota GNSS | §2.4.3c | ✅ (= GT2) |
 | GQ3 | Quota barometrica corretta con la taratura | §2.4.3a | ❌ (= GT3) |
 | GQ4 | Nessun vincolo sul punto basso oltre a seguire lo sgancio | §1.3.5 | ✅ |
 | GQ5 | Dichiarazione con pilota e identificativo | §1.4.4 | 🟡 (= GT11) |

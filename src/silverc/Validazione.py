@@ -38,8 +38,13 @@ _RECORDER_OPTIONS = {
 recorder_choice = st.selectbox(
     "Registratore di volo",
     options=list(_RECORDER_OPTIONS),
-    help="Con un Position Recorder si usa la quota GNSS e il guadagno di quota "
-    "richiesto aumenta di 100 m.",
+    help="Flight Recorder approvato IGC o Position Recorder approvato dalla NAC "
+    "(SC3 §2.2.6a).",
+)
+calibrated = st.checkbox(
+    "Il registratore ha dati di taratura barometrica",
+    help="Senza taratura si usa la quota GNSS con un margine di 100 m su tutti i "
+    "requisiti di quota (SC3 §2.4.6a, §2.4.3c).",
 )
 use_gnss_altitude = st.checkbox("Usa la quota GNSS invece di quella barometrica (con penalizzazione)")
 
@@ -59,6 +64,7 @@ if uploaded_file is not None:
                 flight,
                 use_gnss_altitude=use_gnss_altitude,
                 recorder_kind=_RECORDER_OPTIONS[recorder_choice],
+                calibrated=calibrated,
             )
             report = validate_badge(flight, analysis, BADGES[badge])
 

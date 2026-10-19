@@ -64,9 +64,10 @@ confidenza.
   entrambi dopo lo sgancio.
 - Non è la differenza fra quota massima e minima del volo: il punto basso deve
   precedere quello alto.
-- Con un **Flight Recorder** approvato si usa la **quota barometrica** e
-  basta la soglia prevista. Con un **Position Recorder** si usa la **quota
-  GNSS** e la soglia sale di **100 m** (1100 m invece di 1000 m).
+- Con **dati di taratura barometrica** si usa la **quota barometrica** e
+  basta la soglia prevista. Senza taratura, con un Flight Recorder come con un
+  Position Recorder, si usa la **quota GNSS** e la soglia sale di **100 m**
+  (1100 m invece di 1000 m, §2.4.6a, §2.4.3c).
 
 ## Insegna d'oro (Gold C)
 
@@ -96,7 +97,7 @@ Presuppone l'insegna d'argento già conseguita.
 
 - Almeno **3000 m** fra un punto basso e un punto alto successivo, con lo
   stesso criterio della prova d'argento.
-- Con un Position Recorder: quota GNSS e soglia di 3100 m.
+- Senza dati di taratura: quota GNSS e soglia di 3100 m.
 
 ---
 

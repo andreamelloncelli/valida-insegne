@@ -59,22 +59,20 @@ def _threshold_verdict(measured: float, required: float, band: float) -> Verdict
 
 
 def _height_threshold(base: float, analysis: FlightAnalysis) -> tuple[float, str | None]:
-    recorder = analysis.recorder
-    if analysis.altitude_source.startswith("GNSS"):
+    if _uses_gnss(analysis):
         why = (
-            "registratore trattato come Position Recorder"
-            if recorder is not None and not recorder.is_flight_recorder
-            else "quota GNSS al posto di quella barometrica"
+            "quota GNSS al posto di quella barometrica"
+            if analysis.calibrated
+            else "nessun dato di taratura barometrica, §2.4.6a"
         )
         return base + RULES.gnss_altitude_penalty_m, (
             f"Soglia maggiorata di {RULES.gnss_altitude_penalty_m:.0f} m ({why}): "
-            f"{base:.0f} + {RULES.gnss_altitude_penalty_m:.0f} m sulla quota GNSS."
+            f"{base:.0f} + {RULES.gnss_altitude_penalty_m:.0f} m sulla quota GNSS (§2.4.3c)."
         )
-    if recorder is not None and recorder.is_flight_recorder:
-        return base, (
-            "Flight Recorder approvato: quota barometrica, soglia senza maggiorazione."
-        )
-    return base, None
+    return base, (
+        "Registratore con dati di taratura: quota barometrica, soglia senza "
+        "maggiorazione (§2.4.6b)."
+    )
 
 
 @dataclass(frozen=True)
@@ -201,8 +199,8 @@ def check_height_gain(analysis: FlightAnalysis, rules: BadgeRules = SILVER) -> R
     if not analysis.altitude_usable:
         verdict = Verdict.UNDETERMINED
         reasons.append(
-            "Quota GNSS assente o costante: con un Position Recorder il guadagno "
-            "di quota si misura sulla quota GNSS, che il file non registra."
+            "Quota GNSS assente o costante: senza dati di taratura il guadagno "
+            "di quota si misura sulla quota GNSS (§2.4.6a), che il file non registra."
         )
     elif gain.low is not None and gain.high is not None:
         reasons.append(

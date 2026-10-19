@@ -65,7 +65,13 @@ def build_parser() -> argparse.ArgumentParser:
         choices=sorted(_RECORDER_CHOICES),
         default="auto",
         help="tipo di registratore: fr (Flight Recorder approvato IGC), pr (Position "
-        "Recorder, quota GNSS +100 m), auto (ricavato dal file; default)",
+        "Recorder), auto (ricavato dal file; default)",
+    )
+    parser.add_argument(
+        "--calibrated",
+        action="store_true",
+        help="il registratore ha dati di taratura barometrica: usa la quota barometrica "
+        "senza margine; altrimenti quota GNSS e margine di 100 m (SC3 §2.4.6)",
     )
     parser.add_argument("-v", "--verbose", action="store_true", help="log di dettaglio su stderr")
     return parser
@@ -101,6 +107,7 @@ def main(argv: list[str] | None = None) -> int:
         release_time=release_time,
         use_gnss_altitude=args.gnss_altitude,
         recorder_kind=_RECORDER_CHOICES[args.recorder],
+        calibrated=args.calibrated,
     )
     report = validate_badge(flight, analysis, BADGES[args.badge])
     sys.stdout.write(render(report) + "\n")
