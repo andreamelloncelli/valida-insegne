@@ -52,6 +52,10 @@ class BadgeRules:
     # approvato.
     gnss_altitude_penalty_m: float = 100.0
 
+    # §1.2.12: linee di partenza e d'arrivo lunghe 1 km, centrate sul punto e
+    # perpendicolari alla prima o all'ultima tratta.
+    start_finish_line_m: float = 1_000.0
+
     # §2.4.1: il registratore dev'essere impostato su almeno un fix al minuto.
     max_fix_interval_s: float = 60.0
 
@@ -96,13 +100,10 @@ class AnalysisParams:
     # piu' vicino, oltre la quale il dato non e' considerato affidabile.
     max_release_time_mismatch_s: float = 120.0
 
-    # Zone di osservazione del percorso dichiarato. Il cilindro da 500 m sulle
-    # virate e' una delle due zone del §1.2.6; l'altra, il settore a 90 gradi
-    # di raggio illimitato, non e' ancora gestita. Il cilindro di 1 km su
-    # partenza e arrivo e' un'approssimazione: il §1.2.12 chiede una linea di
-    # 1 km perpendicolare alla tratta (vedi Audit 3, OK6).
+    # Zona di osservazione delle virate. Il cilindro da 500 m e' una delle due
+    # zone del §1.2.6; l'altra, il settore a 90 gradi di raggio illimitato,
+    # non e' ancora gestita (vedi Audit 3, OK8).
     turnpoint_zone_radius_m: float = 500.0
-    start_finish_zone_radius_m: float = 1_000.0
 
 
 @dataclass(frozen=True)

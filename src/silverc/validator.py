@@ -303,9 +303,14 @@ def check_declared_distance(analysis: FlightAnalysis, rules: BadgeRules = GOLD) 
     required_km = rules.min_distance_m / 1000
     method = [
         "Percorso dichiarato letto dai record C del file IGC.",
-        "Geometria dichiarata: ogni punto toccato nell'ordine dichiarato, entrando "
-        "nella sua zona di osservazione; la partenza si cerca dopo lo sgancio. Nel "
-        "triangolo a 3 virate contano solo i lati fra le virate (§1.4.2h).",
+        "Geometria dichiarata: virate toccate nell'ordine dichiarato entrando nella "
+        "zona di osservazione, partenza e arrivo su linee di 1 km perpendicolari "
+        "alla prima e all'ultima tratta, attraversate nel verso della tratta "
+        "(§1.2.12, §1.3.1a, §1.3.2b). Vale l'ultimo attraversamento della partenza "
+        "dopo lo sgancio e prima della prima virata. Nel triangolo a 3 virate "
+        "contano solo i lati fra le virate (§1.4.2h).",
+        "Quota al passaggio delle linee interpolata fra il fix prima e quello "
+        "dopo l'attraversamento (§2.4.3b).",
         "Con 1-3 virate il volo si valuta anche come distanza fino a 3 virate "
         "(§1.4.2f): virate in qualsiasi ordine, anche solo alcune delle dichiarate, "
         "partenza dichiarata o sgancio, arrivo dichiarato o un fix scelto dopo il "
@@ -385,17 +390,20 @@ def check_declared_distance(analysis: FlightAnalysis, rules: BadgeRules = GOLD) 
         )
     for waypoint in check.waypoints:
         if waypoint.reached and waypoint.point is not None:
+            moment = waypoint.time or waypoint.point.time
+            height = (
+                f", quota {waypoint.altitude_m:.0f} m" if waypoint.altitude_m is not None else ""
+            )
             reasons.append(
                 f"{waypoint.label} '{waypoint.waypoint.name}': raggiunto alle "
-                f"{waypoint.point.time:%H:%M:%S} UTC (passaggio a "
-                f"{waypoint.closest_m:.0f} m, zona {waypoint.radius_m:.0f} m)."
+                f"{moment:%H:%M:%S} UTC ({waypoint.zone}{height})."
             )
         else:
             verdict = Verdict.FAIL
             reasons.append(
-                f"{waypoint.label} '{waypoint.waypoint.name}': NON raggiunto, "
-                f"avvicinamento minimo {waypoint.closest_m / 1000:.2f} km contro "
-                f"una zona di {waypoint.radius_m:.0f} m."
+                f"{waypoint.label} '{waypoint.waypoint.name}': NON raggiunto "
+                f"({waypoint.zone}), avvicinamento minimo "
+                f"{waypoint.closest_m / 1000:.2f} km."
             )
 
     if loss is not None:

@@ -74,7 +74,8 @@ def build_gold_flight(
 
 
 # Andata e ritorno dichiarato: casa -> 160 km a est -> casa = 320 km.
-_OUT_AND_RETURN = [(3000.0, 0.0), (0.0, 0.0), (160_000.0, 0.0), (0.0, 0.0)]
+# Il volo passa 2 km a ovest della partenza per attraversarne la linea verso est.
+_OUT_AND_RETURN =[(3000.0, 0.0), (-2000.0, 0.0), (160_000.0, 0.0), (0.0, 0.0)]
 _DECLARED = [
     (0.0, 0.0, "DECOLLO"),
     (0.0, 0.0, "PARTENZA"),
@@ -153,7 +154,7 @@ def test_start_crossed_only_before_release_is_explained(tmp_path):
 
 def test_missed_turnpoint_fails(tmp_path):
     # Il volo si ferma a 150 km: la virata dichiarata a 160 km non viene toccata.
-    short = [(3000.0, 0.0), (0.0, 0.0), (150_000.0, 0.0), (0.0, 0.0)]
+    short = [(3000.0, 0.0), (-2000.0, 0.0), (150_000.0, 0.0), (0.0, 0.0)]
     path = build_gold_flight(tmp_path / "g.igc", legs=short, declared=_DECLARED)
     req, report = _requirement(path)
 
@@ -166,7 +167,7 @@ def test_declared_task_not_flown_is_not_accepted(tmp_path):
     # Dichiarazione oltre i 300 km, ma la traccia non torna all'arrivo: la
     # dichiarazione da sola non basta. Come distanza fino a 3 virate (§1.4.2f)
     # valgono solo i ~220 km volati fino all'ultimo fix utile.
-    no_return = [(3000.0, 0.0), (0.0, 0.0), (165_000.0, 0.0), (100_000.0, 0.0)]
+    no_return = [(3000.0, 0.0), (-2000.0, 0.0), (165_000.0, 0.0), (100_000.0, 0.0)]
     path = build_gold_flight(tmp_path / "g.igc", legs=no_return, declared=_DECLARED)
     req, report = _requirement(path)
 
@@ -178,7 +179,7 @@ def test_declared_task_not_flown_is_not_accepted(tmp_path):
 def test_out_and_return_landed_short_counts_as_three_tp_distance(tmp_path):
     # Andata e ritorno da 320 km atterrato 15 km prima di casa: come distanza
     # fino a 3 virate con arrivo a un fix (§1.4.2f, tabella §1.4.4) fa ~302 km.
-    short_return = [(3000.0, 0.0), (0.0, 0.0), (160_000.0, 0.0), (15_000.0, 0.0)]
+    short_return = [(3000.0, 0.0), (-2000.0, 0.0), (160_000.0, 0.0), (15_000.0, 0.0)]
     path = build_gold_flight(tmp_path / "g.igc", legs=short_return, declared=_DECLARED)
     req, report = _requirement(path)
     check = report.analysis.task_check
@@ -212,7 +213,7 @@ def test_missed_task_falls_back_to_straight_line(tmp_path):
 
 
 def test_failed_task_reports_straight_line_too(tmp_path):
-    short = [(3000.0, 0.0), (0.0, 0.0), (150_000.0, 0.0), (0.0, 0.0)]
+    short = [(3000.0, 0.0), (-2000.0, 0.0), (150_000.0, 0.0), (0.0, 0.0)]
     path = build_gold_flight(tmp_path / "g.igc", legs=short, declared=_DECLARED)
     req, _ = _requirement(path)
 

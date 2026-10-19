@@ -32,8 +32,8 @@ percorsi chiusi hanno partenza e arrivo con coordinate identiche (§1.2.11).
 | OK3 | Al massimo 3 virate | §1.4.4 | ✅ |
 | OK4 | Ordine libero delle virate solo nel percorso (f) | §1.4.2f | ✅ |
 | OK5 | Partenze e arrivi ammessi secondo il percorso | §1.4.4 | ✅ |
-| OK6 | Linee di partenza e d'arrivo da 1 km perpendicolari alla tratta | §1.2.12, §1.3.1a, §1.3.2b | ❌ |
-| OK7 | Quota al passaggio della linea interpolata fra i due fix | §2.4.3b | ❌ |
+| OK6 | Linee di partenza e d'arrivo da 1 km perpendicolari alla tratta | §1.2.12, §1.3.1a, §1.3.2b | ✅ |
+| OK7 | Quota al passaggio della linea interpolata fra i due fix | §2.4.3b | ✅ |
 | OK8 | Zone di virata: cilindro da 500 m **o** settore a 90° di raggio illimitato | §1.2.6 | 🟡 |
 | OK9 | −1 km per ogni virata raggiunta solo col cilindro | §1.3.6 | ❌ |
 | OK10 | Virata raggiunta anche se il segmento fra due fix attraversa la zona | §2.4.2c | ❌ |
@@ -74,7 +74,11 @@ e arrivo. Per le insegne lo SC3 non ammette cilindri di partenza o d'arrivo, di 
 raggio: chiede una **linea** lunga 1 km in totale (500 m per lato dal punto),
 perpendicolare alla prima (o ultima) tratta e attraversata nel verso della tratta. Il
 cilindro va sostituito con la linea, non ridotto a 500 m: oggi si accettano passaggi che
-non attraversano la linea, per esempio di fianco o nel verso sbagliato.
+non attraversano la linea, per esempio di fianco o nel verso sbagliato. Risolto con
+`course.line_crossings`, insieme a OK7: la linea è perpendicolare alla prima o all'ultima
+tratta rivendicata, vale solo l'attraversamento nel verso della tratta e istante e quota si
+interpolano fra i due fix. Della partenza vale l'ultimo attraversamento dopo lo sgancio e
+prima della prima virata.
 
 **OK8 + OK9 — Zone di virata.** Esiste solo il cilindro da 500 m, senza la correzione di
 1 km. Le due voci vanno rilasciate insieme: col solo OK9 i voli girati a settore
