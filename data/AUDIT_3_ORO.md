@@ -39,7 +39,7 @@ percorsi chiusi hanno partenza e arrivo con coordinate identiche (§1.2.11).
 | OK10 | Virata raggiunta anche se il segmento fra due fix attraversa la zona | §2.4.2c | ❌ |
 | OK11 | Distanza ufficiale = percorso − correzioni zona − penalità di quota | §1.3.7 | ❌ |
 | OK12 | Percorso chiuso: partenza e arrivo con le stesse coordinate | §1.2.11 | ❌ |
-| OK13 | Percorso dichiarato non completato: ripiego sulla linea retta | §2.2, §1.4.4 | ❌ |
+| OK13 | Percorso dichiarato non completato: ripiego sulla linea retta | §2.2, §1.4.4 | ✅ |
 | OK14 | Sgancio prima della partenza, indicato nel report | Maurizio | 🟡 |
 | OK15 | Linea retta da una linea di partenza dichiarata | §1.4.2d | ❌ |
 
@@ -86,7 +86,7 @@ dichiarato: un volo che manca una virata ma fa 300 km in linea retta dallo sganc
 bocciato. Deciso il 2026-10-19: il percorso dichiarato e non volato non vale, ma il volo
 si valuta anche come linea retta dallo sgancio (§1.4.2d), che non richiede coordinate
 (§2.3). Le distanze libere (§1.4.2i–l) non sono un ripiego possibile: la tabella §1.4.4
-le ammette solo per i record.
+le ammette solo per i record. Fatto in `validator.check_best_distance`: vale la geometria con l'esito migliore e il report riporta anche l'esito dell'altra.
 
 **OK14 — Sgancio prima della partenza.** La partenza si cerca già dopo lo sgancio, ma il
 report non lo dice.
@@ -103,4 +103,4 @@ partenza dichiarata invece dello sgancio. Non è gestito; dipende da OK2 e OK6.
 ## Ordine di lavoro suggerito
 
 OK14 → OK2 → OK4 e OK5 → OK6 e OK7 → OK8 e OK9 → OK10 → OK11 → OK12 → OK15.
-OK13 (deciso, vedi sopra) va fatto prima di OK2.
+OK13 fatto.

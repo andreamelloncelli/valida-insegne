@@ -149,6 +149,37 @@ def test_declared_task_not_flown_is_not_accepted(tmp_path):
     assert "effettivamente volato" in " ".join(req.reasons)
 
 
+def test_missed_task_falls_back_to_straight_line(tmp_path):
+    # Virata dichiarata a nord mai raggiunta, ma 310 km in linea retta verso
+    # est: per il §2.2 il volo vale come linea retta dallo sgancio.
+    declared = [
+        (0.0, 0.0, "DECOLLO"),
+        (0.0, 0.0, "PARTENZA"),
+        (0.0, 160_000.0, "VIRATA NORD"),
+        (0.0, 0.0, "ARRIVO"),
+        (0.0, 0.0, "ATTERRAGGIO"),
+    ]
+    straight = [(3000.0, 0.0), (313_000.0, 0.0)]
+    path = build_gold_flight(tmp_path / "g.igc", legs=straight, declared=declared)
+    req, report = _requirement(path)
+    reasons = " ".join(req.reasons)
+
+    assert report.analysis.task_check.completed is False
+    assert req.verdict is Verdict.PASS
+    assert float(req.measured.split()[0]) > 300
+    assert "Percorso dichiarato: NON SODDISFATTO" in reasons
+    assert "VIRATA NORD" in reasons
+
+
+def test_failed_task_reports_straight_line_too(tmp_path):
+    short = [(3000.0, 0.0), (0.0, 0.0), (150_000.0, 0.0), (0.0, 0.0)]
+    path = build_gold_flight(tmp_path / "g.igc", legs=short, declared=_DECLARED)
+    req, _ = _requirement(path)
+
+    assert req.verdict is Verdict.FAIL
+    assert "In linea retta dallo sgancio" in " ".join(req.reasons)
+
+
 def test_turnpoints_must_be_in_declared_order(tmp_path):
     # Percorso dichiarato con due virate, volate in ordine invertito.
     declared = [

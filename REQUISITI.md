@@ -83,7 +83,10 @@ Presuppone l'insegna d'argento già conseguita.
     (§1.4.2d, §2.3), si misura fino al punto piu' lontano della traccia;
   - **percorso dichiarato prima del volo** (meta, fino a 3 punti di virata,
     andata e ritorno o triangolo): ogni punto dichiarato va effettivamente
-    volato, un tema dichiarato correttamente ma non percorso non vale.
+    volato, un tema dichiarato correttamente ma non percorso non vale;
+  - un volo che non completa il percorso dichiarato vale comunque come linea
+    retta dallo sgancio, se ne soddisfa i requisiti (§2.2). Le distanze libere
+    (§1.4.2i–l) valgono solo per i record.
 - **Perdita di quota** oltre i 100 km (§2.4.4): limite di **1000 m** (900 m
   con quota GNSS); ogni metro in eccesso toglie 100 m alla distanza. 2000 m di
   perdita su 300 km lasciano 200 km.

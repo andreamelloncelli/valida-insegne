@@ -384,6 +384,51 @@ def check_declared_distance(analysis: FlightAnalysis, rules: BadgeRules = GOLD) 
     )
 
 
+_VERDICT_RANK = {
+    Verdict.FAIL: 0,
+    Verdict.UNDETERMINED: 1,
+    Verdict.MARGINAL: 2,
+    Verdict.PASS: 3,
+}
+
+
+def check_best_distance(analysis: FlightAnalysis, rules: BadgeRules = GOLD) -> Requirement:
+    """Distanza col percorso dichiarato e, in alternativa, in linea retta dallo sgancio.
+
+    Per il §2.2 un volo vale per ogni prova di cui soddisfa i requisiti: un
+    percorso dichiarato e non completato non esclude la linea retta dallo
+    sgancio (§1.4.2d), che non richiede coordinate dichiarate (§2.3). Le
+    distanze libere (§1.4.2i-l) non sono un'alternativa: valgono solo per i
+    record (tabella §1.4.4).
+    """
+    declared = check_declared_distance(analysis, rules)
+    if declared.verdict is Verdict.PASS:
+        return declared
+    straight = check_distance(analysis, rules)
+    if _VERDICT_RANK[straight.verdict] > _VERDICT_RANK[declared.verdict]:
+        straight.reasons = (
+            [
+                f"Percorso dichiarato: {declared.verdict.value} "
+                f"({declared.measured}). Il volo vale comunque come distanza in "
+                "linea retta dallo sgancio (§2.2, §1.4.2d)."
+            ]
+            + straight.reasons
+            + [f"Percorso dichiarato — {reason}" for reason in declared.reasons]
+        )
+        straight.method = straight.method + [
+            "Valutato anche il percorso dichiarato; vale la geometria con l'esito migliore."
+        ]
+        straight.title = (
+            f"Distanza: {rules.min_distance_m / 1000:.0f} km, linea retta dallo sgancio"
+        )
+        return straight
+    declared.reasons.append(
+        f"In linea retta dallo sgancio (§1.4.2d): {straight.measured}, "
+        f"{straight.verdict.value}."
+    )
+    return declared
+
+
 def validate_badge(
     flight: Flight, analysis: FlightAnalysis, rules: BadgeRules = SILVER
 ) -> ValidationReport:
@@ -391,7 +436,7 @@ def validate_badge(
     # Senza percorso dichiarato il volo si valuta come distanza in linea retta
     # con partenza allo sgancio (§1.4.2d), ammessa anche per l'oro (§2.2.2a).
     distance = (
-        check_declared_distance(analysis, rules)
+        check_best_distance(analysis, rules)
         if rules.accepts_declared_task and analysis.task_check is not None
         else check_distance(analysis, rules)
     )
