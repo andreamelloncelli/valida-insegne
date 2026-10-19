@@ -281,28 +281,80 @@ def find_gaps(
     return gaps
 
 
-def find_intermediate_stops(
+def _stationary_runs(
     fixes: list[Fix], moving: list[bool], start_index: int, end_index: int
 ) -> list[tuple[Point, Point]]:
-    """Soste a terra fra due indici: tratti in cui l'aliante non si sposta.
-
-    In volo un aliante non resta entro `stationary_radius_m` per
-    `stationary_window_s`: un tratto fermo dopo lo sgancio e prima
-    dell'atterraggio finale e' un atterraggio intermedio (§2.4.5).
-    """
-    stops: list[tuple[Point, Point]] = []
+    runs: list[tuple[Point, Point]] = []
     run_start: int | None = None
     for i in range(start_index, min(end_index, len(fixes))):
         if not moving[i]:
             if run_start is None:
                 run_start = i
         elif run_start is not None:
-            stops.append((Point(run_start, fixes[run_start]), Point(i, fixes[i])))
+            runs.append((Point(run_start, fixes[run_start]), Point(i, fixes[i])))
             run_start = None
     if run_start is not None:
         last = min(end_index, len(fixes) - 1)
-        stops.append((Point(run_start, fixes[run_start]), Point(last, fixes[last])))
+        runs.append((Point(run_start, fixes[run_start]), Point(last, fixes[last])))
+    return runs
+
+
+def find_ground_stops(
+    fixes: list[Fix], moving: list[bool], start_index: int, end_index: int, use_gnss: bool
+) -> list[tuple[Point, Point]]:
+    """Soste a terra fra due indici: tratti lunghi in cui l'aliante non si sposta.
+
+    In volo un aliante non resta fermo, ma il GPS di un logger puo' bloccare
+    la posizione per qualche decina di secondi: si scartano i tratti brevi e
+    quelli in cui la quota cambia.
+    """
+    stops: list[tuple[Point, Point]] = []
+    for start, end in _stationary_runs(fixes, moving, start_index, end_index):
+        if (end.time - start.time).total_seconds() < PARAMS.stationary_window_s:
+            continue
+        heights = [
+            a for a in (altitude(f, use_gnss) for f in fixes[start.index : end.index + 1])
+            if a is not None
+        ]
+        if heights and max(heights) - min(heights) > PARAMS.ground_altitude_spread_m:
+            continue
+        stops.append((start, end))
     return stops
+
+
+def _relaunched(fixes: list[Fix], stop: Point, use_gnss: bool) -> bool:
+    """Dopo la sosta l'aliante risale, cioe' riparte in volo?"""
+    base = altitude(stop.fix, use_gnss)
+    if base is None:
+        return False
+    after = [a for a in (altitude(f, use_gnss) for f in fixes[stop.index :]) if a is not None]
+    return bool(after) and max(after) - base >= PARAMS.relaunch_climb_m
+
+
+def refine_landing(
+    fixes: list[Fix], moving: list[bool], release: Point, landing: Point, use_gnss: bool
+) -> Point:
+    """Anticipa l'atterraggio alla prima sosta a terra dopo cui non si vola piu'.
+
+    Dopo l'atterraggio l'aliante viene spesso spostato a terra: la sosta
+    finale rilevata e' allora quella al parcheggio e la durata risulterebbe
+    piu' lunga del vero.
+    """
+    for start, _ in find_ground_stops(fixes, moving, release.index, landing.index, use_gnss):
+        if not _relaunched(fixes, start, use_gnss):
+            return start
+    return landing
+
+
+def find_intermediate_stops(
+    fixes: list[Fix], moving: list[bool], start_index: int, end_index: int, use_gnss: bool
+) -> list[tuple[Point, Point]]:
+    """Atterraggi intermedi: soste a terra dopo cui l'aliante riparte (§2.4.5)."""
+    return [
+        (start, end)
+        for start, end in find_ground_stops(fixes, moving, start_index, end_index, use_gnss)
+        if _relaunched(fixes, start, use_gnss)
+    ]
 
 
 def parse_release_time(value: str, flight: Flight) -> datetime:
@@ -456,6 +508,11 @@ def analyse(
             release, confidence, tow_climb = Point(stop, fixes[stop]), "alta", 0.0
             release_source = RELEASE_SOURCE_ENGINE
 
+    # Per riconoscere una sosta serve una quota che non si blocca col GPS: la
+    # barometrica quando il logger la registra.
+    ground_gnss = not baro or max(baro) - min(baro) < PARAMS.min_barometric_spread_m
+    landing = refine_landing(fixes, moving, release, landing, ground_gnss)
+
     engine_start: Point | None = None
     if motorglider:
         if not (flight.has_enl or flight.has_mop):
@@ -518,7 +575,7 @@ def analyse(
             f"{longest[0].time:%H:%M:%S} UTC): la continuita' del volo va confermata "
             "dall'OO o con la traccia di un secondo registratore (§2.4a, §2.4.5, §4.3.5b)."
         )
-    stops = find_intermediate_stops(fixes, moving, release.index, finish.index)
+    stops = find_intermediate_stops(fixes, moving, release.index, finish.index, ground_gnss)
 
     enl_values = [f.enl for f in fixes[release.index : landing.index + 1] if f.enl is not None]
     max_enl = max(enl_values) if enl_values else None

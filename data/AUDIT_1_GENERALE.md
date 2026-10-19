@@ -79,7 +79,10 @@ dell'atterraggio non si ferma più al primo intervallo oltre la finestra di sost
 richiede la traccia di un secondo registratore (§4.3.5b): va almeno segnalato.
 Risolto: i buchi oltre 60 s fra sgancio e atterraggio sono fra le avvertenze; un tratto in
 cui l'aliante resta fermo dopo lo sgancio rende NON DETERMINABILI le tre prove, con il
-rimando all'OO (§2.4.5).
+rimando all'OO (§2.4.5). Una sosta conta solo se dura almeno due minuti con quota costante
+(si escludono i blocchi di posizione del GPS in volo) ed è seguita da una risalita; una
+sosta dopo cui non si vola più è l'atterraggio, anche se l'aliante viene poi spostato a
+terra. Verificato sui 60 voli reali di `data/VoliTest`: nessun falso positivo.
 
 **GT6 — Motore.** C'è solo un'avvertenza con soglia ENL arbitraria (500). Per un
 motoaliante va segnalata anche l'**assenza** di ENL/MOP e la prova finisce all'avvio del

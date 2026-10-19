@@ -103,6 +103,15 @@ class AnalysisParams:
     # considerato non compilato (loggers GPS che scrivono 00000).
     min_barometric_spread_m: int = 50
 
+    # Sosta a terra: tratto fermo che dura almeno `stationary_window_s` oltre
+    # la finestra di rilevamento, con quota entro `ground_altitude_spread_m`.
+    # Esclude i blocchi di posizione del GPS in volo, brevi e con la quota
+    # barometrica che cambia. Dopo una sosta il volo riprende solo se la quota
+    # risale di almeno `relaunch_climb_m`; altrimenti la sosta e'
+    # l'atterraggio e quel che segue e' movimentazione a terra.
+    ground_altitude_spread_m: float = 30.0
+    relaunch_climb_m: float = 100.0
+
     # Distanza massima ammessa fra l'orario di sgancio dichiarato e il fix
     # piu' vicino, oltre la quale il dato non e' considerato affidabile.
     max_release_time_mismatch_s: float = 120.0

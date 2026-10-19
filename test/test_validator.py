@@ -332,10 +332,11 @@ def test_intermediate_stop_makes_requirements_undetermined(tmp_path):
     )
 
     def park(lines, b_index):
-        # Dieci minuti fermi nella stessa posizione a meta' volo.
+        # Dieci minuti fermi a terra, stessa posizione e quota, a meta' volo;
+        # poi il volo riprende e sale.
         anchor = lines[b_index[300]]
         for i in b_index[301:321]:
-            lines[i] = lines[i][:7] + anchor[7:24] + lines[i][24:]
+            lines[i] = lines[i][:7] + anchor[7:35] + lines[i][35:]
 
     _edit_b_records(path, park)
     report = _report(path)
@@ -343,6 +344,64 @@ def test_intermediate_stop_makes_requirements_undetermined(tmp_path):
     assert report.analysis.intermediate_stops
     assert all(r.verdict is not Verdict.PASS for r in report.requirements)
     assert "§2.4.5" in " ".join(_by_code(report, "durata").reasons)
+
+
+def test_frozen_gps_position_in_flight_is_not_a_landing(tmp_path):
+    # Posizione bloccata per dieci minuti ma quota che cambia: e' il GPS del
+    # logger, non un atterraggio.
+    path = build_flight(
+        tmp_path / "f.igc",
+        soaring_duration_s=FIVE_HOURS + 600,
+        distance_m=60_000,
+        altitude=climbing_profile(1500),
+    )
+
+    def freeze(lines, b_index):
+        anchor = lines[b_index[300]]
+        for i in b_index[301:321]:
+            lines[i] = lines[i][:7] + anchor[7:24] + lines[i][24:]
+
+    _edit_b_records(path, freeze)
+    report = _report(path)
+
+    assert report.analysis.intermediate_stops == []
+    assert report.complete is True
+
+
+def test_ground_handling_after_landing_does_not_extend_the_flight(tmp_path):
+    # Atterraggio, dieci minuti fermi, poi l'aliante viene spinto 500 m a terra
+    # e si ferma di nuovo: l'atterraggio e' la prima sosta.
+    path = build_flight(
+        tmp_path / "h.igc",
+        soaring_duration_s=3600,
+        distance_m=20_000,
+        altitude=descending_profile(top=800, bottom=500),
+        trailing_ground_s=600,
+    )
+
+    def push(lines, b_index):
+        last = lines[b_index[-1]]
+        seconds = int(last[1:3]) * 3600 + int(last[3:5]) * 60 + int(last[5:7])
+        moved = []
+        for step in range(1, 11):
+            t = seconds + 20 * step
+            moved.append(f"B{t // 3600:02d}{t % 3600 // 60:02d}{t % 60:02d}" + last[7:])
+        for step in range(11, 30):
+            t = seconds + 20 * step
+            moved.append(f"B{t // 3600:02d}{t % 3600 // 60:02d}{t % 60:02d}" + last[7:])
+        # Spinta: cambia la longitudine (colonne 15-23, millesimi di primo).
+        minutes = int(last[18:23]) + 400
+        for k in range(10, 14):
+            moved[k] = moved[k][:18] + f"{minutes + (k - 10) * 100:05d}" + moved[k][23:]
+        for k in range(14, len(moved)):
+            moved[k] = moved[k][:18] + f"{minutes + 400:05d}" + moved[k][23:]
+        lines[b_index[-1]] = "\n".join([last, *moved])
+
+    _edit_b_records(path, push)
+    analysis = _report(path).analysis
+
+    assert analysis.intermediate_stops == []
+    assert abs(analysis.duration_s - 3600) < 120
 
 
 def test_marginal_result_is_not_valid_for_the_claim(tmp_path):
