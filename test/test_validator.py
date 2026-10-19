@@ -226,8 +226,10 @@ def test_far_point_close_to_takeoff_airfield_fails(tmp_path):
     )
     flight = parse_igc(path)
     analysis = analyse(flight)
-    # Sposta artificialmente il decollo accanto al punto piu' lontano.
+    # Sposta artificialmente il decollo accanto al punto piu' lontano; nessun
+    # altro fix e' candidato.
     analysis.distance_from_takeoff_m = 4_000.0
+    analysis.balanced_finish = None
     req = _by_code(validate_silver(flight, analysis), "distanza")
 
     assert req.verdict is Verdict.FAIL

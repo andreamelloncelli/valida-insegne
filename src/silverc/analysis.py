@@ -48,6 +48,16 @@ class HeightGain:
 
 
 @dataclass
+class FinishFix:
+    """Fix d'arrivo candidato con le distanze dai due punti di riferimento."""
+
+    point: Point
+    distance_m: float
+    from_takeoff_m: float
+    loss_of_height_m: float
+
+
+@dataclass
 class FlightAnalysis:
     takeoff: Point
     landing: Point
@@ -68,6 +78,7 @@ class FlightAnalysis:
     task_check: "TaskCheck | None" = None
     recorder: RecorderInfo | None = None
     altitude_usable: bool = True
+    balanced_finish: FinishFix | None = None
 
     @property
     def duration_s(self) -> float:
@@ -194,6 +205,24 @@ def find_farthest_point(fixes: list[Fix], origin: Fix, start_index: int, end_ind
     best_distance = -1.0
     for i in range(start_index, min(end_index + 1, len(fixes))):
         distance = _fast_distance_m(origin, fixes[i])
+        if distance > best_distance:
+            best_distance, best_index = distance, i
+    return Point(best_index, fixes[best_index])
+
+
+def find_balanced_point(
+    fixes: list[Fix], release: Fix, takeoff: Fix, start_index: int, end_index: int
+) -> Point:
+    """Fix che massimizza la minore fra la distanza dallo sgancio e dal decollo.
+
+    E' il miglior candidato per la distanza d'argento (§2.2.1a), che chiede
+    lo stesso fix d'arrivo lontano da entrambi: il fix piu' lontano dallo
+    sgancio puo' non esserlo abbastanza dal decollo.
+    """
+    best_index = start_index
+    best_distance = -1.0
+    for i in range(start_index, min(end_index + 1, len(fixes))):
+        distance = min(_fast_distance_m(release, fixes[i]), _fast_distance_m(takeoff, fixes[i]))
         if distance > best_distance:
             best_distance, best_index = distance, i
     return Point(best_index, fixes[best_index])
@@ -422,6 +451,19 @@ def analyse(
     far_alt = _altitude(farthest.fix, use_gnss_altitude)
     loss = float(release_alt - far_alt) if release_alt is not None and far_alt is not None else 0.0
 
+    balanced = find_balanced_point(fixes, release.fix, takeoff.fix, release.index, landing.index)
+    balanced_alt = _altitude(balanced.fix, use_gnss_altitude)
+    balanced_finish = FinishFix(
+        point=balanced,
+        distance_m=geodesic_distance_m(release.fix, balanced.fix)[0],
+        from_takeoff_m=geodesic_distance_m(takeoff.fix, balanced.fix)[0],
+        loss_of_height_m=(
+            float(release_alt - balanced_alt)
+            if release_alt is not None and balanced_alt is not None
+            else 0.0
+        ),
+    )
+
     enl_values = [f.enl for f in fixes[release.index : landing.index + 1] if f.enl is not None]
     max_enl = max(enl_values) if enl_values else None
     engine_suspected = bool(
@@ -454,6 +496,7 @@ def analyse(
         ),
         recorder=recorder,
         altitude_usable=altitude_usable,
+        balanced_finish=balanced_finish,
     )
     logger.debug(
         "Analisi volo: fixes=%d, sgancio=%s (%s), atterraggio=%s | durata=%.0fs, "

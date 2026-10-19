@@ -47,8 +47,9 @@ confidenza.
 
 - Almeno **50 km** in linea retta dal punto di sgancio al punto più lontano
   raggiunto in volo.
-- Il punto più lontano deve distare oltre 50 km **sia dallo sgancio sia dal
-  fix d'inizio della corsa di decollo** (§2.2.1a).
+- Lo stesso fix d'arrivo deve distare oltre 50 km **sia dallo sgancio sia dal
+  fix d'inizio della corsa di decollo** (§2.2.1a). Se il punto più lontano
+  dallo sgancio non basta, si cerca il fix più lontano da entrambi.
 - La distanza dovrebbe essere volata senza la guida di un altro pilota
   (§2.2.1a, testo informativo): non è verificabile dalla traccia.
 - **Perdita di quota** fra punto di partenza e punto d'arrivo (§2.4.4): fino a

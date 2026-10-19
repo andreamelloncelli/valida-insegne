@@ -248,6 +248,37 @@ def test_silver_thresholds_still_apply_to_silver(tmp_path):
     assert float(req.measured.split()[0]) > 155
 
 
+def _silver_distance(path):
+    flight = parse_igc(path)
+    report = validate_badge(flight, analyse(flight))
+    return next(r for r in report.requirements if r.code == "distanza"), report
+
+
+def test_silver_far_point_too_close_to_takeoff_fails(tmp_path):
+    # Lo sgancio e' 3 km a est del decollo; verso ovest il punto piu' lontano
+    # dista 52,5 km dallo sgancio ma solo 49,5 km dal decollo.
+    legs = [(3000.0, 0.0), (-49_500.0, 0.0)]
+    path = build_gold_flight(tmp_path / "s.igc", legs=legs, declared=[])
+    req, report = _silver_distance(path)
+
+    assert report.analysis.distance_m > 50_000
+    assert req.verdict is Verdict.FAIL
+    assert "corsa di decollo" in " ".join(req.reasons)
+
+
+def test_silver_picks_a_fix_far_from_both_origins(tmp_path):
+    # Il punto piu' lontano dallo sgancio (ovest) e' a 49,5 km dal decollo,
+    # ma prima il volo passa per un fix a nord a ~51 km da entrambi.
+    legs = [(3000.0, 0.0), (1500.0, 51_000.0), (-49_500.0, 0.0)]
+    path = build_gold_flight(tmp_path / "s.igc", legs=legs, declared=[])
+    req, report = _silver_distance(path)
+
+    assert report.analysis.distance_from_takeoff_m < 50_000
+    assert req.verdict is Verdict.PASS
+    assert 50 < float(req.measured.split()[0]) < 52
+    assert "piu' lontano da entrambi" in " ".join(req.reasons)
+
+
 def test_report_shows_declared_course(tmp_path):
     path = build_gold_flight(tmp_path / "g.igc", legs=_OUT_AND_RETURN, declared=_DECLARED)
     _, report = _requirement(path)

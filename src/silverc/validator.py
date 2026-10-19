@@ -233,13 +233,35 @@ def check_height_gain(analysis: FlightAnalysis, rules: BadgeRules = SILVER) -> R
 
 def check_distance(analysis: FlightAnalysis, rules: BadgeRules = SILVER) -> Requirement:
     gnss = _uses_gnss(analysis)
-    loss = _loss_of_height(analysis.distance_m, analysis.loss_of_height_m, gnss)
+    finish_time = analysis.farthest.time
+    flown = analysis.distance_m
+    from_takeoff = analysis.distance_from_takeoff_m
+    loss_m = analysis.loss_of_height_m
+    reasons: list[str] = []
+    balanced = analysis.balanced_finish
+    # §2.2.1a: se il fix piu' lontano dallo sgancio non lo e' abbastanza dal
+    # decollo, un altro fix puo' soddisfare entrambe le condizioni.
+    if (
+        rules.requires_distance_from_takeoff
+        and from_takeoff < rules.min_distance_m
+        and balanced is not None
+        and min(balanced.distance_m, balanced.from_takeoff_m) > min(flown, from_takeoff)
+    ):
+        reasons.append(
+            f"Il punto piu' lontano dallo sgancio ({flown / 1000:.2f} km, alle "
+            f"{finish_time:%H:%M:%S} UTC) dista solo {from_takeoff / 1000:.2f} km dal "
+            "decollo: scelto come arrivo il fix piu' lontano da entrambi."
+        )
+        finish_time = balanced.point.time
+        flown = balanced.distance_m
+        from_takeoff = balanced.from_takeoff_m
+        loss_m = balanced.loss_of_height_m
+    loss = _loss_of_height(flown, loss_m, gnss)
     distance = loss.official_m
     # Banda dovuta al modello geodetico (sfera FAI vs ellissoide WGS84).
     verdict = _threshold_verdict(
         distance, rules.min_distance_m, band=rules.min_distance_m * RULES.marginal_ratio
     )
-    from_takeoff = analysis.distance_from_takeoff_m
     method = [
         "Punto d'arrivo: il fix piu' lontano dallo sgancio fra tutti quelli "
         "della traccia (non l'atterraggio).",
@@ -250,19 +272,21 @@ def check_distance(analysis: FlightAnalysis, rules: BadgeRules = SILVER) -> Requ
     if rules.requires_distance_from_takeoff:
         method.insert(
             2,
-            f"Il punto piu' lontano deve superare i {rules.min_distance_m / 1000:.0f} km "
-            "sia dallo sgancio sia dal fix d'inizio della corsa di decollo (§2.2.1a).",
+            f"Il fix d'arrivo deve superare i {rules.min_distance_m / 1000:.0f} km "
+            "sia dallo sgancio sia dal fix d'inizio della corsa di decollo (§2.2.1a); "
+            "se il piu' lontano dallo sgancio non basta, si sceglie il fix che "
+            "massimizza la minore delle due distanze.",
         )
         method.append(
             "La distanza d'argento dovrebbe essere volata senza la guida di un altro "
             "pilota (§2.2.1a, testo informativo): la traccia non permette di "
             "verificarlo."
         )
-    reasons = [
-        f"Punto piu' lontano raggiunto alle {analysis.farthest.time:%H:%M:%S} UTC: "
-        f"{analysis.distance_m / 1000:.2f} km dallo sgancio contro i "
+    reasons.append(
+        f"Fix d'arrivo alle {finish_time:%H:%M:%S} UTC: "
+        f"{flown / 1000:.2f} km dallo sgancio contro i "
         f"{rules.min_distance_m / 1000:.0f} km richiesti."
-    ]
+    )
     if rules.accepts_declared_task:
         reasons.append(
             "Percorso valutato come distanza in linea retta con partenza allo "
@@ -275,7 +299,7 @@ def check_distance(analysis: FlightAnalysis, rules: BadgeRules = SILVER) -> Requ
         if from_takeoff < rules.min_distance_m:
             verdict = Verdict.FAIL
             reasons.append(
-                f"Dal fix d'inizio della corsa di decollo il punto piu' lontano dista pero' solo "
+                f"Dal fix d'inizio della corsa di decollo il fix d'arrivo dista pero' solo "
                 f"{from_takeoff / 1000:.2f} km, sotto i {rules.min_distance_m / 1000:.0f} km richiesti."
             )
         else:
