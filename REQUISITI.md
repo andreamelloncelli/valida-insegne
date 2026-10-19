@@ -5,6 +5,20 @@ ottenute in **voli diversi**.
 Ogni volo va documentato con una traccia IGC di un logger approvato, firmata
 (G-record) e convalidata da un Osservatore Ufficiale.
 
+## Controlli sul file IGC
+
+- **Intestazione**: nome **e** cognome del pilota (HFPLT), tipo di aliante
+  riconoscibile (HFGTY) e marche (HFGID). La sigla di gara (HFCID) è
+  facoltativa.
+- **Registratore**: si distingue fra *Flight Recorder* approvato IGC e
+  semplice *Position Recorder* (art. 9.1: entrambi ammessi per Argento e Oro).
+  È considerato Flight Recorder solo un logger con codice costruttore
+  approvato nel record A, G-record presente e modello dichiarato (HFFTY); in
+  ogni altro caso, anche con una descrizione vaga, si ricade sul Position
+  Recorder, l'ipotesi più severa. Il modello va comunque confrontato con la
+  [lista FAI dei registratori approvati](https://www.fai.org/page/igc-approved-flight-recorders).
+  Il tipo si può indicare a mano quando è noto.
+
 ## Come si individua lo sgancio
 
 Durata e guadagno di quota si contano dallo sgancio, ma **l'IGC non lo
@@ -44,9 +58,9 @@ confidenza.
   entrambi dopo lo sgancio.
 - Non è la differenza fra quota massima e minima del volo: il punto basso deve
   precedere quello alto.
-- Si usa la **quota barometrica**. Con la sola quota GNSS (ammessa per Silver e
-  Gold) tutti i requisiti di quota vanno maggiorati di **100 m** di margine
-  d'errore.
+- Con un **Flight Recorder** approvato si usa la **quota barometrica** e
+  basta la soglia prevista. Con un **Position Recorder** si usa la **quota
+  GNSS** e la soglia sale di **100 m** (1100 m invece di 1000 m).
 
 ## Insegna d'oro (Gold C)
 
@@ -63,8 +77,8 @@ Presuppone l'insegna d'argento già conseguita.
   - **linea retta con partenza allo sgancio**: nessuna dichiarazione richiesta
     (art. 13.2), si misura fino al punto piu' lontano della traccia;
   - **percorso dichiarato prima del volo** (meta, fino a 3 punti di virata,
-    andata e ritorno o triangolo): ogni punto dichiarato va documentato dalla
-    traccia.
+    andata e ritorno o triangolo): ogni punto dichiarato va effettivamente
+    volato, un tema dichiarato correttamente ma non percorso non vale.
 - **Perdita di quota** non superiore all'**1% della distanza** (3000 m su
   300 km).
 
@@ -72,7 +86,7 @@ Presuppone l'insegna d'argento già conseguita.
 
 - Almeno **3000 m** fra un punto basso e un punto alto successivo, con lo
   stesso criterio della prova d'argento.
-- Ammessa la quota GNSS con la maggiorazione di 100 m.
+- Con un Position Recorder: quota GNSS e soglia di 3100 m.
 
 ---
 
@@ -83,5 +97,6 @@ Presuppone l'insegna d'argento già conseguita.
 
 - [FAI — Badges and Diplomas](https://www.fai.org/page/badges-and-diplomas)
 - [FAI Sporting Code Section 3 — Gliding, ed. 2025](https://www.fai.org/sites/default/files/document/file/sc3_2025.pdf)
+  — copia locale di riferimento in `data/FAI_SC3_2025.pdf`, scaricata da <https://naa.aero/wp-content/uploads/2026/03/sc3_2025.pdf>
 - [Sporting Code Section 3, Annex C — Official Observer & Pilot Guide](https://fai.org/sites/default/files/sc3c_-_2020.pdf)
 - [IGC — Documenti e pubblicazioni](https://www.fai.org/igc-documents)
