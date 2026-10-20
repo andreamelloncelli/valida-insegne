@@ -36,3 +36,6 @@ htmlcov/
 
 # Tracce di volo di prova
 *.igc
+
+# Voli reali dei test funzionali (nomi dei piloti, non versionati)
+data/VoliTest/
